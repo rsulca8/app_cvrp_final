@@ -1,13 +1,12 @@
 // lib/screens/home_screen.dart
 
-import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter/material.dart';
 
-// Importamos las pantallas del drawer
+// Importamos las pantallas
 import './user_profile_screen.dart';
 import './productos_screen.dart';
-
-import '../auth_service.dart'; // Para el botón de logout
+import '../auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   static const routeName = '/home';
@@ -17,7 +16,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // Paleta de colores de Chazky para consistencia
+  // Paleta de colores de Chazky
   static const Color primaryDarkBlue = Color(0xFF1A202C);
   static const Color mediumDarkBlue = Color(0xFF2D3748);
   static const Color chazkyGold = Color(0xFFD4AF37);
@@ -25,24 +24,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   int _selectedIndex = 0;
 
-  // Títulos para la AppBar que cambian dinámicamente
-  static const List<String> _appBarTitles = <String>['Productos', 'Mi Perfil'];
-
+  // Lista de las pantallas que se mostrarán
   static const List<Widget> _widgetOptions = <Widget>[
     ProductosScreen(),
     UserProfileScreen(),
+    // Puedes añadir una tercera pantalla si quieres, como "Mis Pedidos"
   ];
+
+  // Títulos para la AppBar
+  static const List<String> _appBarTitles = <String>['Productos', 'Mi Perfil'];
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
-    Navigator.of(context).pop(); // Cierra el drawer
   }
 
   @override
   Widget build(BuildContext context) {
-    // Usamos un Container para aplicar el gradiente a toda la pantalla
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -52,123 +51,64 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       child: Scaffold(
-        // Hacemos el fondo del Scaffold transparente para que se vea el gradiente
         backgroundColor: Colors.transparent,
+        // La AppBar ahora es más simple y puede mostrar el título de la vista actual
         appBar: AppBar(
-          // La AppBar también transparente y sin sombra
-          backgroundColor: Colors.transparent,
-          elevation: 0,
           title: Text(
-            _appBarTitles[_selectedIndex], // Título dinámico
+            _appBarTitles[_selectedIndex],
             style: TextStyle(
               fontFamily: 'Montserrat',
               fontWeight: FontWeight.bold,
-              color: chazkyWhite,
             ),
           ),
-        ),
-        drawer:
-            _buildCustomDrawer(), // Usamos un método para construir el drawer
-        body: _widgetOptions.elementAt(_selectedIndex),
-      ),
-    );
-  }
-
-  /// Un método que construye nuestro Drawer con el nuevo estilo.
-  Widget _buildCustomDrawer() {
-    return Drawer(
-      // El fondo del Drawer también debe ser oscuro
-      child: Container(
-        color: primaryDarkBlue,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            // Cabecera del Drawer con el logo y nombre
-            DrawerHeader(
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.white24, width: 0.5),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    'assets/images/chazky_logo2.png', // Asegúrate que esta ruta es correcta
-                    height: 60,
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    'Chazky',
-                    style: TextStyle(
-                      color: chazkyWhite,
-                      fontSize: 24,
-                      fontFamily: 'Montserrat',
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Items del menú
-            _buildDrawerItem(
-              icon: Icons.shopping_cart_outlined,
-              title: 'Productos',
-              index: 0,
-              isSelected: _selectedIndex == 0,
-              onTap: () => _onItemTapped(0),
-            ),
-            _buildDrawerItem(
-              icon: Icons.person_outline,
-              title: 'Perfil de Usuario',
-              index: 1,
-              isSelected: _selectedIndex == 1,
-              onTap: () => _onItemTapped(1),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Divider(color: Colors.white24),
-            ),
-            // Item para cerrar sesión
-            _buildDrawerItem(
-              icon: Icons.logout,
-              title: 'Cerrar Sesión',
-              onTap: () {
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          // Añadimos un botón de Logout directamente en la AppBar
+          actions: [
+            IconButton(
+              icon: Icon(Icons.logout),
+              onPressed: () {
                 Provider.of<AuthService>(context, listen: false).signOut();
               },
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  /// Widget helper para crear cada item del Drawer y manejar el estado de selección.
-  Widget _buildDrawerItem({
-    required IconData icon,
-    required String title,
-    int? index,
-    bool isSelected = false,
-    required VoidCallback onTap,
-  }) {
-    // Colores basados en si el item está seleccionado o no
-    final Color color = isSelected ? chazkyGold : chazkyWhite;
-    final Color tileColor = isSelected
-        ? chazkyGold.withOpacity(0.15)
-        : Colors.transparent;
-
-    return ListTile(
-      leading: Icon(icon, color: color),
-      title: Text(
-        title,
-        style: TextStyle(
-          color: color,
-          fontFamily: 'Montserrat',
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        // Aquí está el cambio principal: usamos bottomNavigationBar
+        bottomNavigationBar: BottomNavigationBar(
+          items: const <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_cart_outlined),
+              activeIcon: Icon(Icons.shopping_cart), // Icono cuando está activo
+              label: 'Productos',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: 'Perfil',
+            ),
+          ],
+          currentIndex: _selectedIndex,
+          onTap: _onItemTapped,
+          // --- Estilo de la barra de navegación ---
+          backgroundColor: primaryDarkBlue.withOpacity(
+            0.8,
+          ), // Fondo oscuro semi-transparente
+          selectedItemColor: chazkyGold, // Color del ítem activo (dorado)
+          unselectedItemColor: chazkyWhite.withOpacity(
+            0.7,
+          ), // Color de ítems inactivos
+          selectedLabelStyle: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Montserrat',
+          ),
+          unselectedLabelStyle: TextStyle(fontFamily: 'Montserrat'),
+          elevation: 0, // Sin sombra
+          type:
+              BottomNavigationBarType.fixed, // Asegura que el fondo sea visible
         ),
+        // El body sigue funcionando igual, mostrando la pantalla seleccionada
+        body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
       ),
-      tileColor: tileColor,
-      onTap: onTap,
     );
   }
 }

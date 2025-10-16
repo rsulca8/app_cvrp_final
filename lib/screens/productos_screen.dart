@@ -200,10 +200,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
       itemCount: _products.length,
       itemBuilder: (ctx, index) {
         final product = _products[index];
+        // Construimos la URL completa de la imagen
+        final imageUrl = "https://149.50.143.81/cvrp${product.imagenUrl}";
+
         return Card(
-          color: mediumDarkBlue.withOpacity(
-            0.5,
-          ), // Fondo oscuro semi-transparente
+          color: mediumDarkBlue.withOpacity(0.5),
           margin: const EdgeInsets.symmetric(vertical: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12.0),
@@ -213,16 +214,38 @@ class _ProductosScreenState extends State<ProductosScreen> {
             padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 35,
-                  backgroundImage: NetworkImage(
-                    "https://149.50.143.81/cvrp${product.imagenUrl}",
+                SizedBox(
+                  width: 70, // El doble del radio (35 * 2)
+                  height: 70,
+                  child: ClipOval(
+                    // Widget para hacer circular a su hijo
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover, // Para que la imagen cubra el círculo
+                      // 1. Esto se muestra MIENTRAS la imagen está cargando
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null)
+                          return child; // Si ya cargó, muestra la imagen
+                        return Center(
+                          child: CircularProgressIndicator(
+                            color: chazkyGold, // Indicador de carga dorado
+                            strokeWidth: 2,
+                          ),
+                        );
+                      },
+
+                      // 2. Esto se muestra SI la imagen falla al cargar
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: primaryDarkBlue,
+                          child: Icon(
+                            Icons.broken_image_outlined,
+                            color: chazkyWhite.withOpacity(0.7),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                  onBackgroundImageError: (_, __) {},
-                  backgroundColor: primaryDarkBlue,
-                  child: product.imagenUrl.isEmpty
-                      ? Icon(Icons.inventory_2_outlined, color: Colors.white54)
-                      : null,
                 ),
                 SizedBox(width: 15),
                 Expanded(
