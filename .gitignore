@@ -1,0 +1,48 @@
+# Archivos de metadatos de Dart y Flutter.
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.dart_tool/
+.metadata
+
+# Artefactos de compilación (build).
+build/
+
+# Dependencias y paquetes.
+# Es recomendable subir el archivo pubspec.lock para asegurar que todo el equipo
+# use las mismas versiones de las dependencias. Si no querés hacerlo, descomentá la siguiente línea.
+# pubspec.lock
+
+# Archivos generados por el sistema operativo.
+*.DS_Store
+.DS_Store?
+
+# Archivos de configuración de IDEs y editores.
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Archivos específicos de la plataforma iOS.
+ios/Pods/
+ios/Podfile.lock
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/ephemeral/
+ios/Flutter/Flutter.podspec
+
+# Archivos específicos de la plataforma Android.
+android/.gradle/
+android/app/build/
+android/local.properties
+android/key.properties
+
+# Archivos de logs y reportes de tests.
+*.log
+coverage/
+
+# Archivos sensibles que no deben subirse (API Keys, etc.).
+*.env
+secrets.json
