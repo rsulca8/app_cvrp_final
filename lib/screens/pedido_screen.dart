@@ -1,17 +1,12 @@
+// lib/screens/pedido_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:intl/intl.dart'; // Para formatear la fecha
 import 'dart:convert';
 
 import '../api.dart';
-import '../models/product_model.dart'; // Reutilizamos el modelo de producto
-
-// Reutilizamos el modelo del item del carrito que definimos en productos_screen
-class CartItem {
-  final Product product;
-  int quantity;
-  CartItem({required this.product, this.quantity = 1});
-}
+import '../models/product_model.dart'; // Importamos el modelo
+import './checkout_screen.dart'; // Importamos la nueva pantalla
 
 class PedidoScreen extends StatefulWidget {
   static const routeName = '/pedido';
@@ -21,7 +16,7 @@ class PedidoScreen extends StatefulWidget {
 }
 
 class _PedidoScreenState extends State<PedidoScreen> {
-  // Paleta de colores de Chazky para consistencia
+  // Paleta de colores
   static const Color primaryDarkBlue = Color(0xFF1A202C);
   static const Color mediumDarkBlue = Color(0xFF2D3748);
   static const Color chazkyGold = Color(0xFFD4AF37);
@@ -37,7 +32,6 @@ class _PedidoScreenState extends State<PedidoScreen> {
     _loadPedido();
   }
 
-  // --- LÓGICA DE DATOS (SIN CAMBIOS) ---
   Future<void> _loadPedido() async {
     final prefs = await SharedPreferences.getInstance();
     if (!prefs.containsKey('pedido')) {
@@ -68,7 +62,8 @@ class _PedidoScreenState extends State<PedidoScreen> {
     }
   }
 
-  Future<void> _enviarPedido() async {
+  // --- ¡NUEVA FUNCIÓN DE NAVEGACIÓN! ---
+  void _goToCheckout() {
     if (_pedidoItems.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -79,58 +74,19 @@ class _PedidoScreenState extends State<PedidoScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userData = json.decode(prefs.getString('userData')!);
-      final fechaEnvio = DateFormat(
-        'yyyy-MM-dd HH:mm:ss',
-      ).format(DateTime.now());
-      final encabezado = {
-        'id_cliente': userData['userId'],
-        'fecha_hora_pedido': fechaEnvio,
-        'total_pedido': _total,
-      };
-      final detalles = _pedidoItems
-          .map(
-            (item) => {
-              'id_producto': item.product.id,
-              'producto_precio_venta': item.product.precio,
-              'cantidad': item.quantity,
-            },
-          )
-          .toList();
-
-      await API.enviarPedido(encabezado, detalles);
-      await prefs.remove('pedido');
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('¡Pedido enviado con éxito!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al enviar el pedido.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
+    // Navegamos a la nueva pantalla de checkout, pasando los datos del pedido
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) =>
+            CheckoutScreen(pedidoItems: _pedidoItems, total: _total),
+      ),
+    );
   }
-  // --- FIN DE LA LÓGICA DE DATOS ---
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      // ... (decoración del gradiente)
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -167,6 +123,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
               )
             : Column(
                 children: [
+                  // El footer del total ahora está arriba, debajo de la AppBar
                   _buildTotalFooter(),
                   Expanded(
                     child: ListView.builder(
@@ -181,17 +138,20 @@ class _PedidoScreenState extends State<PedidoScreen> {
                   ),
                 ],
               ),
+        // --- BOTÓN FLOTANTE ACTUALIZADO ---
         floatingActionButton: FloatingActionButton(
-          onPressed: _enviarPedido,
+          onPressed: _goToCheckout, // Llama a la nueva función
           backgroundColor: chazkyGold,
           foregroundColor: primaryDarkBlue,
-          child: Icon(Icons.send_rounded),
+          child: Icon(Icons.arrow_forward_rounded), // Icono de "continuar"
         ),
       ),
     );
   }
 
+  // ... (los widgets _buildTotalFooter y _buildPedidoItemCard no cambian)
   Widget _buildTotalFooter() {
+    // ... (tu código actual de _buildTotalFooter)
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       decoration: BoxDecoration(
@@ -224,6 +184,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
   }
 
   Widget _buildPedidoItemCard(CartItem item) {
+    // ... (tu código actual de _buildPedidoItemCard)
     final producto = item.product;
     final totalProducto = producto.precio * item.quantity;
 
@@ -241,9 +202,7 @@ class _PedidoScreenState extends State<PedidoScreen> {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundImage: NetworkImage(
-                "https://149.50.143.81/cvrp${producto.imagenUrl}",
-              ),
+              backgroundImage: NetworkImage(producto.imagenUrl),
               backgroundColor: primaryDarkBlue,
             ),
             SizedBox(width: 15),

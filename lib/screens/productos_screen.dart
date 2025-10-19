@@ -16,9 +16,7 @@ class CartItem {
 
 class ProductosScreen extends StatefulWidget {
   static const routeName = '/productos';
-
   const ProductosScreen({Key? key}) : super(key: key);
-
   @override
   _ProductosScreenState createState() => _ProductosScreenState();
 }
@@ -31,7 +29,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
   static const Color chazkyWhite = Colors.white;
 
   List<Product> _products = [];
-  Map<String, CartItem> _cart = {}; // Usamos un Map para fácil acceso por ID
+  Map<String, CartItem> _cart = {};
   bool _isLoading = true;
   double _total = 0.0;
 
@@ -56,9 +54,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al cargar productos: $e')),
         );
@@ -74,6 +70,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       final Map<String, CartItem> loadedCart = {};
       cartData.forEach((key, value) {
         loadedCart[key] = CartItem(
+          // Product.fromJson ahora es robusto y puede leer datos nuevos y antiguos
           product: Product.fromJson(value['producto']),
           quantity: value['cantidad'],
         );
@@ -83,30 +80,25 @@ class _ProductosScreenState extends State<ProductosScreen> {
     }
   }
 
+  // --- ¡ACTUALIZADO! ---
   Future<void> _saveCart() async {
     final prefs = await SharedPreferences.getInstance();
     final cartDataToSave = _cart.map(
       (key, value) => MapEntry(key, {
-        'producto': {
-          'id_producto': value.product.id,
-          'nombre_producto': value.product.nombre,
-          'marca_producto': value.product.marca,
-          'precio_producto': value.product.precio,
-          'descuento_producto': value.product.descuento,
-          'imagen_producto': value.product.imagenUrl,
-        },
+        // Usamos el método toJson() de nuestro modelo
+        'producto': value.product.toJson(),
         'cantidad': value.quantity,
       }),
     );
     prefs.setString('pedido', json.encode(cartDataToSave));
   }
 
-  void _addToCart(Product product) {
+  void _addToCart(Product product, [int quantity = 1]) {
     setState(() {
       if (_cart.containsKey(product.id)) {
-        _cart[product.id]!.quantity++;
+        _cart[product.id]!.quantity += quantity;
       } else {
-        _cart[product.id] = CartItem(product: product);
+        _cart[product.id] = CartItem(product: product, quantity: quantity);
       }
       _calculateTotal();
       _saveCart();
@@ -132,12 +124,220 @@ class _ProductosScreenState extends State<ProductosScreen> {
     });
     _total = total;
   }
-  // --- FIN DE LA LÓGICA DE DATOS ---
+
+  // --- ¡NUEVO! ---
+  // Método para mostrar el popup de detalle del producto
+  void _showProductDetail(BuildContext context, Product product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true, // Permite que el sheet sea más alto
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          height:
+              MediaQuery.of(context).size.height * 0.85, // 85% de la pantalla
+          decoration: BoxDecoration(
+            color: primaryDarkBlue,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            children: [
+              // Barra para indicar que se puede arrastrar
+              Container(
+                width: 60,
+                height: 6,
+                margin: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: mediumDarkBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              // Contenido con scroll
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Imagen del producto
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          product.imagenUrl,
+                          height: 250,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          loadingBuilder: (context, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              height: 250,
+                              color: mediumDarkBlue,
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  color: chazkyGold,
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              height: 250,
+                              color: mediumDarkBlue,
+                              child: Icon(
+                                Icons.inventory_2_outlined,
+                                color: Colors.white54,
+                                size: 60,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      // Marca y Nombre
+                      Text(
+                        product.marca.toUpperCase(),
+                        style: TextStyle(
+                          color: chazkyGold,
+                          fontFamily: 'Montserrat',
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        product.nombre,
+                        style: TextStyle(
+                          color: chazkyWhite,
+                          fontFamily: 'Montserrat',
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 15),
+                      // Precio
+                      Text(
+                        '\$${product.precio.toStringAsFixed(2)}',
+                        style: TextStyle(
+                          color: chazkyGold,
+                          fontFamily: 'Montserrat',
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      // Descripción
+                      Text(
+                        'Descripción',
+                        style: TextStyle(
+                          color: chazkyWhite,
+                          fontFamily: 'Montserrat',
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 5),
+                      Text(
+                        product.descripcion,
+                        style: TextStyle(
+                          color: chazkyWhite.withOpacity(0.7),
+                          fontFamily: 'Montserrat',
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      // Detalles adicionales
+                      _buildDetailRow('Categoría:', product.categorias),
+                      _buildDetailRow('Stock:', product.stock ?? 'N/A'),
+                      _buildDetailRow(
+                        'Peso:',
+                        '${product.peso ?? '-'} ${product.simboloUnidadPeso ?? ''}',
+                      ),
+                      _buildDetailRow(
+                        'Dimensiones:',
+                        '${product.alto ?? '-'} x ${product.ancho ?? '-'} x ${product.profundidad ?? '-'} ${product.simboloUnidadDimension ?? ''}',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Barra inferior con botón de añadir
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: mediumDarkBlue,
+                  border: Border(
+                    top: BorderSide(color: Colors.white24, width: 0.5),
+                  ),
+                ),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: chazkyGold,
+                    minimumSize: Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    textStyle: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Montserrat',
+                    ),
+                    foregroundColor: primaryDarkBlue,
+                  ),
+                  onPressed: () {
+                    _addToCart(product);
+                    Navigator.of(ctx).pop(); // Cierra el popup
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('${product.nombre} añadido al carrito.'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  },
+                  child: Text('Añadir al Carrito'),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper para las filas de detalle en el popup
+  Widget _buildDetailRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              color: chazkyWhite.withOpacity(0.7),
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: chazkyWhite,
+              fontFamily: 'Montserrat',
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // El fondo debe ser transparente para heredar el gradiente del HomeScreen
       backgroundColor: Colors.transparent,
       body: _isLoading
           ? Center(
@@ -152,17 +352,17 @@ class _ProductosScreenState extends State<ProductosScreen> {
               ],
             ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).pushNamed(PedidoScreen.routeName);
-        },
-        backgroundColor: chazkyGold, // Color dorado
-        foregroundColor: primaryDarkBlue, // Color del ícono
+        onPressed: () =>
+            Navigator.of(context).pushNamed(PedidoScreen.routeName),
+        backgroundColor: chazkyGold,
+        foregroundColor: primaryDarkBlue,
         child: Icon(Icons.shopping_cart_checkout_rounded),
       ),
     );
   }
 
   Widget _buildHeader() {
+    // ... (sin cambios)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -200,114 +400,121 @@ class _ProductosScreenState extends State<ProductosScreen> {
       itemCount: _products.length,
       itemBuilder: (ctx, index) {
         final product = _products[index];
-        // Construimos la URL completa de la imagen
-        final imageUrl = "https://149.50.143.81/cvrp${product.imagenUrl}";
+        // ¡Usamos la URL completa desde el modelo!
+        final imageUrl = product.imagenUrl;
 
         return Card(
           color: mediumDarkBlue.withOpacity(0.5),
           margin: const EdgeInsets.symmetric(vertical: 8),
+          clipBehavior:
+              Clip.antiAlias, // Asegura que el InkWell siga los bordes
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12.0),
             side: BorderSide(color: Colors.white24, width: 0.5),
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Row(
-              children: [
-                SizedBox(
-                  width: 70, // El doble del radio (35 * 2)
-                  height: 70,
-                  child: ClipOval(
-                    // Widget para hacer circular a su hijo
-                    child: Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover, // Para que la imagen cubra el círculo
-                      // 1. Esto se muestra MIENTRAS la imagen está cargando
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null)
-                          return child; // Si ya cargó, muestra la imagen
-                        return Center(
-                          child: CircularProgressIndicator(
-                            color: chazkyGold, // Indicador de carga dorado
-                            strokeWidth: 2,
-                          ),
-                        );
-                      },
-
-                      // 2. Esto se muestra SI la imagen falla al cargar
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: primaryDarkBlue,
-                          child: Icon(
-                            Icons.broken_image_outlined,
-                            color: chazkyWhite.withOpacity(0.7),
-                          ),
-                        );
-                      },
+          // --- ¡ACTUALIZADO! ---
+          // Envolvemos la tarjeta en InkWell para hacerla "tocable"
+          child: InkWell(
+            onTap: () {
+              _showProductDetail(context, product); // Llama al popup
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 70,
+                    height: 70,
+                    child: ClipOval(
+                      child: Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              color: chazkyGold,
+                              strokeWidth: 2,
+                            ),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: primaryDarkBlue,
+                            child: Icon(
+                              Icons.inventory_2_outlined,
+                              color: chazkyWhite.withOpacity(0.7),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-                SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  SizedBox(width: 15),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.nombre,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: chazkyWhite,
+                            fontFamily: 'Montserrat',
+                          ),
+                          maxLines: 2, // Permite hasta 2 líneas para el nombre
+                          overflow: TextOverflow
+                              .ellipsis, // Añade '...' si es muy largo
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          product.marca,
+                          style: TextStyle(
+                            color: chazkyWhite.withOpacity(0.7),
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '\$${product.precio.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: chazkyGold,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            fontFamily: 'Montserrat',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Controles para añadir/quitar productos
+                  Column(
                     children: [
+                      IconButton(
+                        icon: Icon(Icons.add_circle_outline, color: chazkyGold),
+                        onPressed: () => _addToCart(product),
+                      ),
                       Text(
-                        product.nombre,
+                        _cart[product.id]?.quantity.toString() ?? '0',
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
                           color: chazkyWhite,
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        product.marca,
-                        style: TextStyle(
-                          color: chazkyWhite.withOpacity(0.7),
-                          fontFamily: 'Montserrat',
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        '\$${product.precio.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          color: chazkyGold,
-                          fontWeight: FontWeight.bold,
                           fontSize: 18,
+                          fontWeight: FontWeight.bold,
                           fontFamily: 'Montserrat',
                         ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.remove_circle_outline,
+                          color: chazkyWhite.withOpacity(0.7),
+                        ),
+                        onPressed: () => _removeFromCart(product),
                       ),
                     ],
                   ),
-                ),
-                // Controles para añadir/quitar productos
-                Column(
-                  children: [
-                    IconButton(
-                      icon: Icon(Icons.add_circle_outline, color: chazkyGold),
-                      onPressed: () => _addToCart(product),
-                    ),
-                    Text(
-                      _cart[product.id]?.quantity.toString() ?? '0',
-                      style: TextStyle(
-                        color: chazkyWhite,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        fontFamily: 'Montserrat',
-                      ),
-                    ),
-                    IconButton(
-                      icon: Icon(
-                        Icons.remove_circle_outline,
-                        color: chazkyWhite.withOpacity(0.7),
-                      ),
-                      onPressed: () => _removeFromCart(product),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
