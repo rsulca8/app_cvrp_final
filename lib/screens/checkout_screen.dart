@@ -5,11 +5,13 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'package:latlong2/latlong.dart'; // Importar LatLng de latlong2
 
 import '../api.dart';
 import '../models/product_model.dart';
 import '../auth_service.dart';
 import './home_screen.dart'; // Para volver al Home
+import './map_selection_screen.dart'; // Importar la pantalla del mapa
 
 class CheckoutScreen extends StatefulWidget {
   static const routeName = '/checkout';
@@ -44,6 +46,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final _emailC = TextEditingController();
   final _direccionC = TextEditingController();
 
+  // Estados para la ubicación seleccionada
+  LatLng? _selectedLocation;
+  String? _selectedAddress;
+
   @override
   void initState() {
     super.initState();
@@ -54,6 +60,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Future<void> _loadUserData() async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
+      // Evita llamar a la API si no hay token (aunque no debería pasar aquí)
+      if (authService.token == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
       final userData = await API.getUserInfo(authService.token!);
 
       if (mounted) {
@@ -61,28 +72,30 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           _nombreC.text = userData['nombre'] ?? '';
           _apellidoC.text = userData['apellido'] ?? '';
           _emailC.text = userData['email'] ?? '';
-          // Asume que 'telefono' puede venir de la API, si no, déjalo vacío
           _telefonoC.text = userData['telefono'] ?? '';
           _isLoading = false;
         });
       }
     } catch (e) {
+      print("Error cargando datos de usuario: $e");
       if (mounted) setState(() => _isLoading = false);
-      // No es crítico si falla, el usuario puede llenarlo manualmente
+      // Muestra un mensaje si falla, pero permite continuar
+      _showErrorDialog(
+        'No se pudieron precargar tus datos. Por favor, complétalos manualmente.',
+      );
     }
   }
 
-  // Esta es la lógica que movimos de pedido_screen
+  // Lógica para enviar el pedido
   Future<void> _enviarPedido() async {
-    // 1. Validar el formulario
     if (!_formKey.currentState!.validate()) {
       _showErrorDialog('Por favor, completa todos los campos requeridos.');
       return;
     }
-
-    // 2. Validar dirección (simple)
-    if (_direccionC.text.isEmpty) {
-      _showErrorDialog('Por favor, ingresa una dirección de entrega.');
+    if (_selectedLocation == null || _direccionC.text.isEmpty) {
+      _showErrorDialog(
+        'Por favor, selecciona una dirección de entrega en el mapa.',
+      );
       return;
     }
 
@@ -90,25 +103,31 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final userData = json.decode(prefs.getString('userData')!);
+      // Asegurarse de que userData existe antes de decodificar
+      final userDataString = prefs.getString('userData');
+      if (userDataString == null) {
+        throw Exception('No se encontraron datos de sesión del usuario.');
+      }
+      final userData = json.decode(userDataString);
+
       final fechaEnvio = DateFormat(
         'yyyy-MM-dd HH:mm:ss',
       ).format(DateTime.now());
 
-      // 3. Construir el encabezado con los datos del formulario
       final encabezado = {
         'id_cliente': userData['userId'],
         'fecha_hora_pedido': fechaEnvio,
         'total_pedido': widget.total,
-        // --- ¡NUEVOS DATOS DEL FORMULARIO! ---
         'nombre_cliente': _nombreC.text,
         'apellido_cliente': _apellidoC.text,
         'telefono_cliente': _telefonoC.text,
         'email_cliente': _emailC.text,
         'direccion_entrega': _direccionC.text,
+        // (Opcional) Envía coordenadas si tu API las acepta
+        'latitud_entrega': _selectedLocation!.latitude,
+        'longitud_entrega': _selectedLocation!.longitude,
       };
 
-      // 4. Construir los detalles
       final detalles = widget.pedidoItems
           .map(
             (item) => {
@@ -119,29 +138,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           )
           .toList();
 
-      // 5. Enviar a la API
-      // (Asegúrate de que tu API.enviarPedido ahora acepte estos nuevos campos)
       await API.enviarPedido(encabezado, detalles);
-
-      // 6. Limpiar el carrito local
-      await prefs.remove('pedido');
+      await prefs.remove('pedido'); // Limpia el carrito
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('¡Pedido enviado con éxito!'),
             backgroundColor: Colors.green,
+            duration: Duration(seconds: 3), // Duración más larga
           ),
         );
-        // 7. Volver hasta el Home
-        Navigator.of(
-          context,
-        ).popUntil(ModalRoute.withName(HomeScreen.routeName));
+        // Vuelve a la pantalla principal (HomeScreen)
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     } catch (e) {
+      print("Error al enviar pedido: $e");
       if (mounted) {
         setState(() => _isLoading = false);
-        _showErrorDialog('Error al enviar el pedido. Intenta de nuevo.');
+        _showErrorDialog(
+          'Error al enviar el pedido. Verifica tu conexión e inténtalo de nuevo.',
+        );
       }
     }
   }
@@ -152,12 +169,29 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // --- Placeholder para la función del mapa ---
-  void _openMap() {
-    // Aquí iría la lógica para abrir Google Maps
-    _showErrorDialog('La selección por mapa no está implementada aún.');
-    // TODO: Implementar google_maps_flutter
+  // --- FUNCIÓN DEL MAPA IMPLEMENTADA ---
+  void _openMap() async {
+    // Navega a la pantalla del mapa y ESPERA a que regrese un resultado.
+    final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      MaterialPageRoute(builder: (ctx) => MapSelectionScreen()),
+    );
+
+    // Verifica si se recibió un resultado
+    if (result != null) {
+      // Actualiza el estado con los datos recibidos del mapa.
+      setState(() {
+        _selectedLocation = result['location'] as LatLng?;
+        _selectedAddress = result['address'] as String?;
+        // Actualiza el campo de texto con la dirección obtenida.
+        _direccionC.text = _selectedAddress ?? 'Dirección no obtenida';
+      });
+      // Vuelve a validar el campo de dirección después de seleccionarlo
+      _formKey.currentState?.validate();
+    } else {
+      print("Selección de mapa cancelada.");
+    }
   }
+  // --- Fin Función Mapa ---
 
   @override
   void dispose() {
@@ -189,7 +223,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
-        body: _isLoading
+        body:
+            _isLoading &&
+                _nombreC
+                    .text
+                    .isEmpty // Muestra loader solo si está cargando datos iniciales
             ? Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(chazkyGold),
@@ -229,37 +267,93 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                       SizedBox(height: 30),
                       _buildSectionTitle('Dirección de Entrega'),
-                      _buildTextFormField(
-                        _direccionC,
-                        'Ingresa tu dirección',
-                        Icons.home_outlined,
-                      ),
-                      TextButton.icon(
-                        onPressed: _openMap,
-                        icon: Icon(Icons.map_outlined, color: chazkyGold),
-                        label: Text(
-                          'Seleccionar en el mapa',
-                          style: TextStyle(
+                      // Campo de dirección (solo lectura, se llena desde el mapa)
+                      TextFormField(
+                        controller: _direccionC,
+                        readOnly: true,
+                        style: TextStyle(
+                          color: chazkyWhite,
+                          fontFamily: 'Montserrat',
+                        ),
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: mediumDarkBlue.withOpacity(0.7),
+                          prefixIcon: Icon(
+                            Icons.home_outlined,
+                            color: chazkyWhite.withOpacity(0.8),
+                          ),
+                          labelText: 'Dirección seleccionada en el mapa',
+                          labelStyle: TextStyle(
+                            color: chazkyWhite.withOpacity(0.5),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white24),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white24),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(color: Colors.white24),
+                          ),
+                          errorStyle: TextStyle(
                             color: chazkyGold,
-                            fontFamily: 'Montserrat',
+                            fontWeight: FontWeight.bold,
+                          ),
+                          // Muestra el hintText si está vacío
+                          hintText: _direccionC.text.isEmpty
+                              ? 'Toca el botón para seleccionar'
+                              : null,
+                          hintStyle: TextStyle(
+                            color: chazkyWhite.withOpacity(0.4),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Por favor, selecciona una dirección en el mapa';
+                          }
+                          return null;
+                        },
+                      ),
+                      // Botón para abrir el mapa
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8.0),
+                        child: TextButton.icon(
+                          onPressed: _openMap,
+                          icon: Icon(Icons.map_outlined, color: chazkyGold),
+                          label: Text(
+                            'Seleccionar/Cambiar en el mapa',
+                            style: TextStyle(
+                              color: chazkyGold,
+                              fontFamily: 'Montserrat',
+                            ),
                           ),
                         ),
                       ),
+                      SizedBox(height: 20), // Espacio antes del botón inferior
                     ],
                   ),
                 ),
               ),
-        // Botón de confirmar en la parte inferior
+        // Botón inferior para confirmar
         bottomNavigationBar: _buildConfirmButton(),
       ),
     );
   }
 
-  // --- Widgets de UI ---
+  // --- Widgets de UI (sin cambios significativos) ---
 
   Widget _buildConfirmButton() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      // Añade padding inferior basado en el área segura del dispositivo
+      padding: EdgeInsets.fromLTRB(
+        20,
+        15,
+        20,
+        MediaQuery.of(context).padding.bottom + 15,
+      ),
       decoration: BoxDecoration(
         color: primaryDarkBlue,
         border: Border(top: BorderSide(color: Colors.white24, width: 0.5)),
@@ -275,23 +369,36 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             fontFamily: 'Montserrat',
           ),
           foregroundColor: primaryDarkBlue,
+          // Deshabilita visualmente el botón si está cargando
+          disabledBackgroundColor: chazkyGold.withOpacity(0.5),
         ),
-        onPressed: _enviarPedido,
+        // onPressed es null si _isLoading es true, deshabilitando el botón
+        onPressed: _isLoading ? null : _enviarPedido,
         child: _isLoading
-            ? CircularProgressIndicator(color: primaryDarkBlue)
+            ? SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  color: primaryDarkBlue,
+                  strokeWidth: 3,
+                ),
+              )
             : Text('Confirmar y Enviar Pedido'),
       ),
     );
   }
 
   Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: TextStyle(
-        color: chazkyWhite,
-        fontSize: 20,
-        fontWeight: FontWeight.bold,
-        fontFamily: 'Montserrat',
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0, top: 16.0),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: chazkyWhite,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          fontFamily: 'Montserrat',
+        ),
       ),
     );
   }
@@ -306,6 +413,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
+          crossAxisAlignment:
+              CrossAxisAlignment.start, // Alinea el título a la izquierda
           children: [
             Text(
               'Resumen del Pedido',
@@ -327,8 +436,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     fontFamily: 'Montserrat',
                   ),
                 ),
+                // Calcula la suma total de cantidades de items
                 Text(
-                  '${widget.pedidoItems.length}',
+                  '${widget.pedidoItems.fold<int>(0, (sum, item) => sum + item.quantity)}',
                   style: TextStyle(
                     color: chazkyWhite,
                     fontWeight: FontWeight.bold,
@@ -366,7 +476,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  // Helper para los campos de texto
   Widget _buildTextFormField(
     TextEditingController controller,
     String label,
@@ -397,10 +506,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: chazkyGold, width: 2),
           ),
-          errorStyle: TextStyle(
-            color: Colors.yellowAccent,
-            fontWeight: FontWeight.bold,
-          ),
+          errorStyle: TextStyle(color: chazkyGold, fontWeight: FontWeight.bold),
         ),
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
@@ -408,6 +514,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           }
           if (label == 'Email' && !value.contains('@')) {
             return 'Por favor, ingresa un email válido.';
+          }
+          if (label == 'Teléfono' &&
+              (value.length < 7 ||
+                  !RegExp(
+                    r'^[+]*[(]{0,1}[0-9]{1,4}[)]{0,1}[-\s\./0-9]*$',
+                  ).hasMatch(value))) {
+            // Validación más flexible para teléfono
+            return 'Ingresa un número válido.';
           }
           return null;
         },
