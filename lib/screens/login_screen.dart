@@ -43,10 +43,14 @@ class _LoginScreenState extends State<LoginScreen> {
       switch (resp['resp']) {
         case 'OK':
           final userData = await API.getUserInfo(_userController.text);
-          Provider.of<AuthService>(
-            context,
-            listen: false,
-          ).signIn(userData['usuario']!, userData['id']!);
+          // Asume que tu API devuelve 'tipo_usuario'
+          final String userRoleString =
+              userData['tipo_usuario'] ?? 'Cliente'; // Rol por defecto
+          Provider.of<AuthService>(context, listen: false).signIn(
+            userData['usuario']!,
+            userData['id']!,
+            userRoleString,
+          ); // <-- Pasar el rol
           break;
         case 'contraseña incorrecta':
           _showErrorDialog('Contraseña incorrecta.');

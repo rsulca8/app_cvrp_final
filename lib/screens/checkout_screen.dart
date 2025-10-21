@@ -86,7 +86,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     }
   }
 
-  // Lógica para enviar el pedido
   Future<void> _enviarPedido() async {
     if (!_formKey.currentState!.validate()) {
       _showErrorDialog('Por favor, completa todos los campos requeridos.');
@@ -103,19 +102,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Asegurarse de que userData existe antes de decodificar
       final userDataString = prefs.getString('userData');
       if (userDataString == null) {
         throw Exception('No se encontraron datos de sesión del usuario.');
       }
       final userData = json.decode(userDataString);
-
       final fechaEnvio = DateFormat(
         'yyyy-MM-dd HH:mm:ss',
       ).format(DateTime.now());
 
-      final encabezado = {
-        'id_cliente': userData['userId'],
+      // --- CONSTRUIR EL PAYLOAD JSON ---
+      // Creamos un solo Map que contiene todo
+      final Map<String, dynamic> pedidoPayload = {
+        // Datos del encabezado
+        'id_cliente':
+            userData['userId'], // Asegúrate que 'userId' sea la clave correcta
         'fecha_hora_pedido': fechaEnvio,
         'total_pedido': widget.total,
         'nombre_cliente': _nombreC.text,
@@ -123,46 +124,67 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'telefono_cliente': _telefonoC.text,
         'email_cliente': _emailC.text,
         'direccion_entrega': _direccionC.text,
-        // (Opcional) Envía coordenadas si tu API las acepta
         'latitud_entrega': _selectedLocation!.latitude,
         'longitud_entrega': _selectedLocation!.longitude,
+        // Array de detalles
+        'detalles': widget.pedidoItems
+            .map(
+              (item) => {
+                'id_producto': item.product.id,
+                'cantidad': item.quantity,
+                'producto_precio_venta':
+                    item.product.precio, // Precio al momento de la compra
+              },
+            )
+            .toList(),
       };
+      // --- FIN PAYLOAD JSON ---
 
-      final detalles = widget.pedidoItems
-          .map(
-            (item) => {
-              'id_producto': item.product.id,
-              'producto_precio_venta': item.product.precio,
-              'cantidad': item.quantity,
-            },
-          )
-          .toList();
+      // --- LLAMAR A LA API ACTUALIZADA ---
+      final response = await API.enviarPedido(pedidoPayload);
+      // --- FIN LLAMADA API ---
 
-      await API.enviarPedido(encabezado, detalles);
-      await prefs.remove('pedido'); // Limpia el carrito
+      // --- MANEJAR RESPUESTA ---
+      if (response['status'] == 'success') {
+        await prefs.remove('pedido'); // Limpia el carrito solo si fue exitoso
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('¡Pedido enviado con éxito!'),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 3), // Duración más larga
-          ),
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                response['message'] ?? '¡Pedido enviado con éxito!',
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        }
+      } else {
+        // Si PHP devolvió status: error
+        throw Exception(
+          response['message'] ?? 'Error desconocido al procesar el pedido.',
         );
-        // Vuelve a la pantalla principal (HomeScreen)
-        Navigator.of(context).popUntil((route) => route.isFirst);
       }
+      // --- FIN MANEJO RESPUESTA ---
     } catch (e) {
-      print("Error al enviar pedido: $e");
+      print("Error al enviar pedido (catch): $e");
       if (mounted) {
         setState(() => _isLoading = false);
+        // Muestra el mensaje de error específico devuelto por la API o el catch
         _showErrorDialog(
-          'Error al enviar el pedido. Verifica tu conexión e inténtalo de nuevo.',
+          'Error: ${e.toString().replaceFirst("Exception: ", "")}',
         );
+      }
+    } finally {
+      // Asegúrate de que isLoading se ponga en false incluso si hay un error no capturado
+      if (mounted && _isLoading) {
+        setState(() => _isLoading = false);
       }
     }
   }
 
+  // ... (resto del código de checkout_screen: _loadUserData, _showErrorDialog, _openMap, build, etc. sin cambios) ...
   void _showErrorDialog(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: Colors.red),
@@ -171,15 +193,18 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   // --- FUNCIÓN DEL MAPA IMPLEMENTADA ---
   void _openMap() async {
-    // Navega a la pantalla del mapa y ESPERA a que regrese un resultado.
+    // 1. Navega a la pantalla del mapa y ESPERA a que regrese un resultado.
+    //    'await' pausa la ejecución aquí hasta que MapSelectionScreen llame a Navigator.pop(result).
     final result = await Navigator.of(context).push<Map<String, dynamic>>(
+      // Especifica el tipo esperado
       MaterialPageRoute(builder: (ctx) => MapSelectionScreen()),
     );
 
-    // Verifica si se recibió un resultado
+    // 2. Verifica si se recibió un resultado (si el usuario confirmó y no solo cerró la pantalla).
     if (result != null) {
-      // Actualiza el estado con los datos recibidos del mapa.
+      // 3. Actualiza el estado con los datos recibidos del mapa.
       setState(() {
+        // Hacemos un cast seguro al tipo esperado (LatLng de latlong2)
         _selectedLocation = result['location'] as LatLng?;
         _selectedAddress = result['address'] as String?;
         // Actualiza el campo de texto con la dirección obtenida.
@@ -188,10 +213,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       // Vuelve a validar el campo de dirección después de seleccionarlo
       _formKey.currentState?.validate();
     } else {
+      // Opcional: Mostrar un mensaje si el usuario canceló la selección
       print("Selección de mapa cancelada.");
     }
   }
-  // --- Fin Función Mapa ---
 
   @override
   void dispose() {
@@ -299,7 +324,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             borderSide: BorderSide(color: Colors.white24),
                           ),
                           errorStyle: TextStyle(
-                            color: chazkyGold,
+                            color: Colors.yellowAccent,
                             fontWeight: FontWeight.bold,
                           ),
                           // Muestra el hintText si está vacío
@@ -390,7 +415,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   Widget _buildSectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8.0, top: 16.0),
+      padding: const EdgeInsets.only(
+        bottom: 8.0,
+        top: 16.0,
+      ), // Añade espacio superior también
       child: Text(
         title,
         style: TextStyle(
@@ -506,7 +534,10 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: chazkyGold, width: 2),
           ),
-          errorStyle: TextStyle(color: chazkyGold, fontWeight: FontWeight.bold),
+          errorStyle: TextStyle(
+            color: Colors.yellowAccent,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         validator: (value) {
           if (value == null || value.trim().isEmpty) {
