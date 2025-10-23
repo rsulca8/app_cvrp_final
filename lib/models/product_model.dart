@@ -57,10 +57,10 @@ class Product {
 
     return Product(
       // Usamos '??' para ser compatibles con los datos antiguos del carrito
-      id: json['id_producto'],
+      id: json['id_producto'].toString(),
       nombre: json['nombre'] ?? json['nombre_producto'] ?? 'Sin Nombre',
       descripcion:
-          json['descripcion'] ??
+          json['descripcion'].toString() ??
           json['nombre'] ??
           json['nombre_producto'] ??
           '',
@@ -77,17 +77,17 @@ class Product {
                 .toString(),
           ) ??
           0.0,
-      codigoBarra: json['codigo_barra'],
-      stock: json['stock'],
+      codigoBarra: json['codigo_barra'].toString(),
+      stock: json['stock'].toString(),
       marca: json['marca'] ?? json['marca_producto'] ?? 'Sin Marca',
       imagenUrl: _buildImageUrl(json['imagen'] ?? json['imagen_producto']),
       categorias: json['nombreCategorias'] ?? 'Sin Categoría',
-      peso: json['peso'],
-      simboloUnidadPeso: json['simboloUnidadPeso'],
-      alto: json['alto'],
-      ancho: json['ancho'],
-      profundidad: json['profundidad'],
-      simboloUnidadDimension: json['simboloUnidadDimension'],
+      peso: json['peso'].toString(),
+      simboloUnidadPeso: json['simboloUnidadPeso'].toString(),
+      alto: json['alto'].toString(),
+      ancho: json['ancho'].toString(),
+      profundidad: json['profundidad'].toString(),
+      simboloUnidadDimension: json['simboloUnidadDimension'].toString(),
     );
   }
 

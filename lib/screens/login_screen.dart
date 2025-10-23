@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
               userData['tipo_usuario'] ?? 'Cliente'; // Rol por defecto
           Provider.of<AuthService>(context, listen: false).signIn(
             userData['usuario']!,
-            userData['id']!,
+            userData['id']!.toString(),
             userRoleString,
           ); // <-- Pasar el rol
           break;

@@ -19,7 +19,7 @@ class API {
     String password,
   ) async {
     final url = Uri.parse(
-      '${_endPoint}login_user.php?user=$user&password=$password',
+      '${_endPoint}login.php?user=$user&password=$password',
     );
     final response = await http.get(url);
     return json.decode(response.body);
