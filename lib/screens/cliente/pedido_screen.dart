@@ -5,9 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart'; // Para formatear la fecha
 import 'dart:convert';
 
-import '../api.dart';
-import '../models/product_model.dart';
-import './checkout_screen.dart'; // Importamos la nueva pantalla
+import '../../api.dart';
+import '../../models/product_model.dart';
+import 'checkout_screen.dart'; // Importamos la nueva pantalla
 
 class PedidoScreen extends StatefulWidget {
   static const routeName = '/pedido';

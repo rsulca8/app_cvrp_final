@@ -10,7 +10,7 @@ import 'http_override.dart'; // Archivo para el fix de SSL (ver abajo)
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/create_user_screen.dart';
-import 'screens/pedido_screen.dart';
+import 'screens/cliente/pedido_screen.dart';
 import 'screens/splash_screen.dart'; // Una pantalla de carga simple
 
 void main() {

@@ -11,14 +11,15 @@ class Product {
   final String marca;
   final String imagenUrl; // Esta será la URL completa
   final String categorias;
+  final String? id_categoria;
 
   // Campos adicionales para la vista de detalle
   final String? peso;
-  final String? simboloUnidadPeso;
+  final String? id_unidad_peso; // Nuevo - ID
   final String? alto;
   final String? ancho;
   final String? profundidad;
-  final String? simboloUnidadDimension;
+  final String? id_unidad_dimension; // Nuevo - ID
 
   Product({
     required this.id,
@@ -31,12 +32,13 @@ class Product {
     required this.marca,
     required this.imagenUrl,
     required this.categorias,
+    required this.id_categoria,
     this.peso,
-    this.simboloUnidadPeso,
+    this.id_unidad_peso, // Nuevo
     this.alto,
     this.ancho,
     this.profundidad,
-    this.simboloUnidadDimension,
+    this.id_unidad_dimension, // Nuevo
   });
 
   // Factory constructor para crear un Product desde un Map (JSON)
@@ -82,16 +84,16 @@ class Product {
       marca: json['marca'] ?? json['marca_producto'] ?? 'Sin Marca',
       imagenUrl: _buildImageUrl(json['imagen'] ?? json['imagen_producto']),
       categorias: json['nombreCategorias'] ?? 'Sin Categoría',
+      id_categoria: json['id_categoria']?.toString(),
       peso: json['peso'].toString(),
-      simboloUnidadPeso: json['simboloUnidadPeso'].toString(),
+      id_unidad_peso: json['id_unidad_peso'].toString(),
       alto: json['alto'].toString(),
       ancho: json['ancho'].toString(),
       profundidad: json['profundidad'].toString(),
-      simboloUnidadDimension: json['simboloUnidadDimension'].toString(),
+      id_unidad_dimension: json['id_unidad_dimension'].toString(),
     );
   }
 
-  // Método para convertir un Product a JSON (para guardar en el carrito)
   Map<String, dynamic> toJson() {
     return {
       'id_producto': id,
@@ -102,15 +104,15 @@ class Product {
       'codigo_barra': codigoBarra,
       'stock': stock,
       'marca': marca,
-      // Guardamos la URL completa para simplificar
       'imagen': imagenUrl,
       'nombreCategorias': categorias,
+      'id_categoria': id_categoria,
       'peso': peso,
-      'simboloUnidadPeso': simboloUnidadPeso,
+      'id_unidad_peso': id_unidad_peso,
       'alto': alto,
       'ancho': ancho,
       'profundidad': profundidad,
-      'simboloUnidadDimension': simboloUnidadDimension,
+      'id_unidad_dimension': id_unidad_dimension,
     };
   }
 }

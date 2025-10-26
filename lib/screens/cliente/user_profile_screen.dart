@@ -2,8 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../api.dart';
-import '../auth_service.dart';
+import '../../api.dart';
+import '../../auth_service.dart';
 
 class UserProfileScreen extends StatelessWidget {
   static const routeName = '/user-profile';

@@ -130,4 +130,172 @@ class API {
       return {'status': 'error', 'message': 'Error de conexión o formato: $e'};
     }
   }
+
+  static Future<Map<String, dynamic>> crearProducto(
+    Map<String, dynamic> productData,
+  ) async {
+    final url = Uri.parse('${_endPoint}crear_producto.php');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode(productData),
+      );
+      // Devuelve la respuesta del servidor (ej: éxito o error)
+      return json.decode(response.body);
+    } catch (e) {
+      return {'status': 'error', 'message': 'Error de conexión: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> actualizarProducto(
+    String productId,
+    Map<String, dynamic> productData,
+  ) async {
+    // Añadimos el ID al cuerpo o a la URL según tu API
+    final url = Uri.parse(
+      '${_endPoint}actualizar_producto.php',
+    ); // Podrías pasar el ID en la URL también
+    try {
+      final body = {
+        ...productData,
+        'id_producto': productId, // Incluye el ID para identificar el producto
+      };
+      final response = await http.put(
+        // Usamos PUT para actualizar
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode(body),
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      return {'status': 'error', 'message': 'Error de conexión: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> eliminarProducto(String productId) async {
+    final url = Uri.parse('${_endPoint}eliminar_producto.php');
+    try {
+      final response = await http.delete(
+        // Usamos DELETE
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({'id_producto': productId}), // Envía el ID
+      );
+      return json.decode(response.body);
+    } catch (e) {
+      return {'status': 'error', 'message': 'Error de conexión: $e'};
+    }
+  }
+
+  static Future<List<dynamic>> getCategorias() async {
+    final url = Uri.parse(
+      '${_endPoint}get_categorias.php',
+    ); // Asegúrate que el script exista
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      } else {
+        throw Exception(
+          'Error del servidor al obtener categorías: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error en getCategorias: $e');
+      throw Exception('No se pudieron cargar las categorías.');
+    }
+  }
+
+  static Future<List<dynamic>> getUnidadesPeso() async {
+    final url = Uri.parse('${_endPoint}get_unidades_peso.php');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      } else {
+        throw Exception('Error del servidor ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('No se pudieron cargar las unidades de peso: $e');
+    }
+  }
+
+  static Future<List<dynamic>> getUnidadesDimension() async {
+    final url = Uri.parse(
+      '${_endPoint}get_unidades_dimension.php',
+    ); // Script PHP necesario
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as List<dynamic>;
+      } else {
+        throw Exception('Error del servidor ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('No se pudieron cargar las unidades de dimensión: $e');
+    }
+  }
+
+  // Obtiene pedidos filtrando por uno o más estados
+  static Future<List<dynamic>> getPedidosPorEstado(List<String> estados) async {
+    // Convierte la lista de estados en un string para la URL, ej: "Pendiente,En Proceso"
+    final estadosParam = estados.join(',');
+    final url = Uri.parse('${_endPoint}get_pedidos.php?estados=$estadosParam');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        // Asume que devuelve un array de objetos Pedido
+        return json.decode(response.body) as List<dynamic>;
+      } else {
+        throw Exception('Error del servidor ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('No se pudieron cargar los pedidos: $e');
+    }
+  }
+
+  // Obtiene usuarios que son repartidores (y quizás disponibles)
+  static Future<List<dynamic>> getRepartidoresDisponibles() async {
+    // Podrías añadir filtros extra si tienes un estado 'disponible'
+    final url = Uri.parse(
+      '${_endPoint}get_repartidores.php?tipo=Repartidor&estado=disponible',
+    ); // Ejemplo
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        // Asume que devuelve un array de objetos Usuario (Repartidor)
+        return json.decode(response.body) as List<dynamic>;
+      } else {
+        throw Exception('Error del servidor ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('No se pudieron cargar los repartidores: $e');
+    }
+  }
+
+  // Envía los IDs seleccionados para generar rutas
+  static Future<Map<String, dynamic>> generarRutas(
+    List<String> pedidoIds,
+    List<String> repartidorIds,
+  ) async {
+    final url = Uri.parse('${_endPoint}generar_rutas.php');
+    try {
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          'pedido_ids': pedidoIds,
+          'repartidor_ids': repartidorIds,
+        }),
+      );
+      // Asume que devuelve una respuesta JSON indicando éxito/error o las rutas generadas
+      return json.decode(response.body);
+    } catch (e) {
+      return {
+        'status': 'error',
+        'message': 'Error de conexión al generar rutas: $e',
+      };
+    }
+  }
 }

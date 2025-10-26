@@ -7,11 +7,11 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:latlong2/latlong.dart'; // Importar LatLng de latlong2
 
-import '../api.dart';
-import '../models/product_model.dart';
-import '../auth_service.dart';
-import './home_screen.dart'; // Para volver al Home
-import './map_selection_screen.dart'; // Importar la pantalla del mapa
+import '../../api.dart';
+import '../../models/product_model.dart';
+import '../../auth_service.dart';
+import '../home_screen.dart'; // Para volver al Home
+import '../map_selection_screen.dart'; // Importar la pantalla del mapa
 
 class CheckoutScreen extends StatefulWidget {
   static const routeName = '/checkout';

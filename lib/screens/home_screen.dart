@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 // Importa TODAS las pantallas posibles
-import './user_profile_screen.dart';
-import './productos_screen.dart';
-import './ventas_screen.dart';
-import './ajustes_admin_screen.dart';
-import './logistica_screen.dart';
-import './ruta_pedido_screen.dart';
-import './ajustes_repartidor_screen.dart';
+import 'cliente/user_profile_screen.dart';
+import 'cliente/productos_screen.dart';
+import 'admin/ventas_screen.dart';
+import 'admin/ajustes_admin_screen.dart';
+import 'admin/logistica_screen.dart';
+import 'repartidor/ruta_pedido_screen.dart';
+import 'admin/ajustes_repartidor_screen.dart';
+import 'admin/productos_config_screen.dart';
 
 import '../auth_service.dart';
 
@@ -57,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // Admin
   static final List<Widget> _adminWidgetOptions = <Widget>[
     VentasScreen(),
-    ProductosScreen(),
+    ProductosConfigScreen(),
     AjustesAdminScreen(),
     LogisticaScreen(),
   ];
@@ -173,6 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(
               fontFamily: 'Montserrat',
               fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
           ),
           backgroundColor: Colors.transparent,
