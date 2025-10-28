@@ -182,6 +182,9 @@ class _HomeScreenState extends State<HomeScreen> {
           actions: [
             IconButton(
               icon: Icon(Icons.logout),
+              style: ButtonStyle(
+                foregroundColor: MaterialStateProperty.all<Color>(chazkyWhite),
+              ),
               onPressed: () {
                 Provider.of<AuthService>(context, listen: false).signOut();
                 // Opcional: navegar explícitamente a Login si el Consumer no lo hace

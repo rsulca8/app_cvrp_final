@@ -298,4 +298,155 @@ class API {
       };
     }
   }
+
+  static Future<List<dynamic>> getRutasAsignadas() async {
+    // Pide rutas que estén 'Asignada' o 'En Curso'
+    final url = Uri.parse(
+      '${_endPoint}get_rutas.php?estados=Asignada,En Curso',
+    );
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        // Asume que devuelve un array de objetos Ruta (con datos del repartidor)
+        return json.decode(response.body) as List<dynamic>;
+      } else {
+        throw Exception('Error del servidor ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('No se pudieron cargar las rutas: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getDetallesRuta(String rutaId) async {
+    // Validate input locally before making the API call
+    if (rutaId.isEmpty ||
+        int.tryParse(rutaId) == null ||
+        int.parse(rutaId) <= 0) {
+      throw ArgumentError('ID de ruta inválido proporcionado.');
+    }
+
+    // Construct the URL with the route ID as a query parameter
+    final url = Uri.parse('${_endPoint}get_ruta_detalle.php?id_ruta=$rutaId');
+    try {
+      // Make the GET request
+      final response = await http.get(url);
+
+      // Check for successful HTTP status code
+      if (response.statusCode == 200) {
+        // Decode the JSON response body
+        final data = json.decode(response.body);
+
+        // Check if the decoded data is a Map and contains the 'status' key
+        if (data is Map<String, dynamic> && data.containsKey('status')) {
+          // Check if the PHP script reported success
+          if (data['status'] == 'success') {
+            // Return the entire data map which should contain 'ruta' and 'detalles'
+            return data;
+          } else {
+            // If PHP reported an error (e.g., status: 'error'), throw an exception
+            // using the message provided by the PHP script.
+            throw Exception(
+              data['message'] ??
+                  'Error reportado por el servidor al obtener detalles.',
+            );
+          }
+        } else {
+          // If the JSON structure is not what we expect
+          throw Exception('Respuesta JSON inesperada del servidor.');
+        }
+      } else {
+        // Handle non-200 HTTP status codes
+        String errorMessage = 'Error del servidor (${response.statusCode})';
+        // Try to get a more specific error message from the response body if available
+        try {
+          final errorData = json.decode(response.body);
+          if (errorData is Map<String, dynamic> &&
+              errorData.containsKey('message')) {
+            errorMessage += ': ${errorData['message']}';
+          }
+        } catch (_) {
+          // Ignore if the body is not valid JSON
+        }
+        throw Exception(errorMessage);
+      }
+    } on http.ClientException catch (e) {
+      // Handle specific network errors
+      print('Error de red en getDetallesRuta: $e');
+      throw Exception(
+        'Error de red al obtener detalles de la ruta. Verifica tu conexión.',
+      );
+    } catch (e) {
+      // Handle JSON decoding errors or other unexpected errors
+      print('Error en getDetallesRuta: $e');
+      // Re-throw a more user-friendly or generic error
+      throw Exception(
+        'No se pudieron cargar los detalles de la ruta: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+    }
+  }
+
+  // Llama a get_configuracion.php sin parámetro 'clave'
+  static Future<Map<String, dynamic>> getAllConfiguraciones() async {
+    final url = Uri.parse(
+      '${_endPoint}get_configuracion.php',
+    ); // Llama sin ?clave=...
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map<String, dynamic>) {
+          return data; // Devuelve el mapa completo {"status": "...", "configuraciones": [...]}
+        } else {
+          throw Exception('Respuesta JSON no es un mapa.');
+        }
+      } else {
+        throw Exception('Error del servidor ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error en getAllConfiguraciones: $e');
+      // Devuelve un mapa de error consistente
+      return {
+        'status': 'error',
+        'message':
+            'No se pudo cargar la configuración: ${e.toString().replaceFirst("Exception: ", "")}',
+        'configuraciones': [],
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> actualizarConfiguracion(
+    String clave,
+    String nuevoValor,
+  ) async {
+    final url = Uri.parse('${API._endPoint}actualizar_configuracion.php');
+    try {
+      final response = await http.put(
+        // Usamos PUT para actualizar
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          'clave': clave,
+          'valor': nuevoValor, // Envía el nuevo valor como string
+        }),
+      );
+      final decodedResponse = json.decode(response.body);
+      if (response.statusCode == 200) {
+        if (decodedResponse is Map<String, dynamic>) {
+          return decodedResponse; // Devuelve la respuesta del PHP (ej: {'status':'success', 'message': '...'})
+        } else {
+          throw Exception('Respuesta inesperada del servidor.');
+        }
+      } else {
+        throw Exception(
+          decodedResponse['message'] ??
+              'Error ${response.statusCode} del servidor.',
+        );
+      }
+    } catch (e) {
+      print('Error en actualizarConfiguracion: $e');
+      throw Exception(
+        'Error de conexión o formato: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+    }
+  }
 }
