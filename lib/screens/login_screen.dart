@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _userController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _isPasswordObscured = true;
 
   // Colores definidos para la paleta de Chazky
   static const Color primaryDarkBlue = Color(
@@ -28,6 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
   ); // Color intermedio del gradiente
   static const Color chazkyGold = Color(0xFFD4AF37); // Dorado del logo
   static const Color chazkyWhite = Colors.white; // Blanco para perfil y texto
+  static const Color background = Color(0xFF1A202C);
+  static const Color cardBackground = Color(0xFF2D3748);
+  static const Color secondaryText = Color(0xFFA0AEC0);
+  static const Color fieldFill = Color(0xFF4A5568);
 
   Future<void> _loginCheck() async {
     setState(() {
@@ -146,6 +151,15 @@ class _LoginScreenState extends State<LoginScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Eficiencia en cada entrega',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              color: secondaryText,
+                              fontSize: 16,
+                            ),
+                          ),
                           SizedBox(height: 50),
 
                           // Campo de Usuario
@@ -160,8 +174,21 @@ class _LoginScreenState extends State<LoginScreen> {
                           _buildTextField(
                             controller: _passwordController,
                             hintText: 'Contraseña',
-                            isObscure: true,
+                            isObscure: _isPasswordObscured,
                             icon: Icons.lock,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _isPasswordObscured
+                                    ? Icons.visibility_off
+                                    : Icons.visibility,
+                                color: chazkyWhite.withOpacity(0.7),
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isPasswordObscured = !_isPasswordObscured;
+                                });
+                              },
+                            ),
                           ),
                           SizedBox(height: 50),
 
@@ -230,6 +257,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required String hintText,
     bool isObscure = false,
     IconData? icon,
+    Widget? suffixIcon,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -252,6 +280,7 @@ class _LoginScreenState extends State<LoginScreen> {
             fontFamily: 'Montserrat',
           ),
           contentPadding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+          suffixIcon: suffixIcon,
           border: InputBorder.none,
           counterText: '',
         ),
