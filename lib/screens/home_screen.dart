@@ -10,6 +10,7 @@ import 'admin/ventas_screen.dart';
 import 'admin/ajustes_admin_screen.dart';
 import 'admin/logistica_screen.dart';
 import 'repartidor/ruta_pedido_screen.dart';
+import 'repartidor/hoja_ruta_diaria_screen.dart';
 import 'admin/ajustes_repartidor_screen.dart';
 import 'admin/productos_config_screen.dart';
 
@@ -95,11 +96,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // Repartidor
   static final List<Widget> _repartidorWidgetOptions = <Widget>[
     RutaPedidoScreen(),
-    AjustesRepartidorScreen(),
+    HojaRutaDiariaScreen(),
   ];
   static const List<String> _repartidorAppBarTitles = <String>[
     'Ruta del Pedido',
-    'Ajustes',
+    'Hoja de Ruta Diaria',
   ];
   static const List<BottomNavigationBarItem> _repartidorNavItems =
       <BottomNavigationBarItem>[
@@ -109,9 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
           label: 'Ruta',
         ),
         BottomNavigationBarItem(
-          icon: Icon(Icons.tune_outlined),
-          activeIcon: Icon(Icons.tune),
-          label: 'Ajustes',
+          icon: Icon(Icons.list_outlined),
+          activeIcon: Icon(Icons.list),
+          label: 'Hoja de Ruta Diaria',
         ),
       ];
   // --- Fin Definiciones ---

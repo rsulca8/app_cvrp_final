@@ -328,36 +328,25 @@ class API {
     // Construct the URL with the route ID as a query parameter
     final url = Uri.parse('${_endPoint}get_ruta_detalle.php?id_ruta=$rutaId');
     try {
-      // Make the GET request
       final response = await http.get(url);
 
-      // Check for successful HTTP status code
       if (response.statusCode == 200) {
-        // Decode the JSON response body
         final data = json.decode(response.body);
 
-        // Check if the decoded data is a Map and contains the 'status' key
         if (data is Map<String, dynamic> && data.containsKey('status')) {
-          // Check if the PHP script reported success
           if (data['status'] == 'success') {
-            // Return the entire data map which should contain 'ruta' and 'detalles'
             return data;
           } else {
-            // If PHP reported an error (e.g., status: 'error'), throw an exception
-            // using the message provided by the PHP script.
             throw Exception(
               data['message'] ??
                   'Error reportado por el servidor al obtener detalles.',
             );
           }
         } else {
-          // If the JSON structure is not what we expect
           throw Exception('Respuesta JSON inesperada del servidor.');
         }
       } else {
-        // Handle non-200 HTTP status codes
         String errorMessage = 'Error del servidor (${response.statusCode})';
-        // Try to get a more specific error message from the response body if available
         try {
           final errorData = json.decode(response.body);
           if (errorData is Map<String, dynamic> &&
@@ -370,15 +359,12 @@ class API {
         throw Exception(errorMessage);
       }
     } on http.ClientException catch (e) {
-      // Handle specific network errors
       print('Error de red en getDetallesRuta: $e');
       throw Exception(
         'Error de red al obtener detalles de la ruta. Verifica tu conexión.',
       );
     } catch (e) {
-      // Handle JSON decoding errors or other unexpected errors
       print('Error en getDetallesRuta: $e');
-      // Re-throw a more user-friendly or generic error
       throw Exception(
         'No se pudieron cargar los detalles de la ruta: ${e.toString().replaceFirst("Exception: ", "")}',
       );
@@ -446,6 +432,71 @@ class API {
       print('Error en actualizarConfiguracion: $e');
       throw Exception(
         'Error de conexión o formato: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> getMiRutaActiva(
+    String repartidorId,
+  ) async {
+    // Pasa el id_repartidor como parámetro GET
+    final url = Uri.parse(
+      '${API._endPoint}get_ruta_activa_repartidor.php?id_repartidor=$repartidorId',
+    );
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map<String, dynamic>) {
+          // Devuelve el mapa completo {"status": "...", "ruta": {...}, "detalles": [...]}
+          // o {"status": "success", "message": "No hay ruta activa"}
+          return data;
+        } else {
+          throw Exception('Respuesta JSON no es un mapa.');
+        }
+      } else {
+        throw Exception('Error del servidor (${response.statusCode})');
+      }
+    } catch (e) {
+      print('Error en getMiRutaActiva: $e');
+      throw Exception(
+        'No se pudo cargar la ruta activa: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+    }
+  }
+
+  static Future<List<dynamic>> getRutasPorRepartidor(
+    String repartidorId,
+  ) async {
+    if (repartidorId.isEmpty) {
+      throw ArgumentError('ID de repartidor inválido.');
+    }
+    // Llama a un nuevo script PHP
+    final url = Uri.parse(
+      '${API._endPoint}get_rutas_repartidor.php?id_repartidor=$repartidorId&estados=Asignada,En Curso',
+    );
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        // PHP podría devolver un JSON con status/rutas o solo la lista
+        if (data is Map<String, dynamic> && data['status'] == 'success') {
+          return data['rutas'] as List<dynamic>? ??
+              []; // Devuelve la lista de rutas
+        } else if (data is List<dynamic>) {
+          return data; // Devuelve la lista directamente
+        } else {
+          throw Exception(
+            data['message'] ?? 'Respuesta inválida del servidor.',
+          );
+        }
+      } else {
+        throw Exception('Error del servidor (${response.statusCode})');
+      }
+    } catch (e) {
+      print('Error en getRutasPorRepartidor: $e');
+      throw Exception(
+        'No se pudieron cargar las rutas: ${e.toString().replaceFirst("Exception: ", "")}',
       );
     }
   }

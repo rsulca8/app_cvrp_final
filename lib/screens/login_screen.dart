@@ -240,7 +240,7 @@ class _LoginScreenState extends State<LoginScreen> {
       child: TextField(
         controller: controller,
         obscureText: isObscure,
-        maxLength: 8,
+        maxLength: 16,
         style: TextStyle(color: chazkyWhite, fontFamily: 'Montserrat'),
         decoration: InputDecoration(
           prefixIcon: icon != null

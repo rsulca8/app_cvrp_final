@@ -30,6 +30,7 @@ class MyApp extends StatelessWidget {
       create: (ctx) => AuthService()..tryAutoLogin(),
       child: Consumer<AuthService>(
         builder: (ctx, auth, _) => MaterialApp(
+          debugShowCheckedModeBanner: false,
           title: 'Chazky',
           theme: ThemeData(
             primarySwatch: Colors.blue,
