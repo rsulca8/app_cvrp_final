@@ -242,12 +242,16 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text(_isEditing ? 'Editar Producto' : 'Añadir Producto'),
+          title: Text(
+            _isEditing ? 'Editar Producto' : 'Añadir Producto',
+            style: TextStyle(color: chazkyWhite),
+          ),
           backgroundColor: Colors.transparent,
           elevation: 0,
+          foregroundColor: chazkyWhite,
           actions: [
             IconButton(
-              icon: Icon(Icons.save),
+              icon: Icon(Icons.save, color: chazkyWhite),
               // Deshabilita guardar si está cargando datos iniciales o guardando
               onPressed: stillLoadingInitialData || _isLoading
                   ? null

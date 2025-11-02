@@ -369,21 +369,25 @@ class RutaDetalleScreenState extends State<RutaDetalleScreen> {
             'Detalle Ruta #${widget.rutaId}',
             style: TextStyle(fontFamily: 'Montserrat', color: chazkyWhite),
           ),
+          foregroundColor: chazkyWhite,
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back),
+            icon: Icon(Icons.arrow_back, color: chazkyWhite),
             tooltip: 'Ver Todas las Rutas',
             onPressed: () => Navigator.of(context).pop(),
           ),
           actions: [
             IconButton(
-              icon: Icon(Icons.refresh),
+              icon: Icon(Icons.refresh, color: chazkyWhite),
               tooltip: 'Recargar',
               onPressed: _isLoading ? null : _loadRutaDetails,
             ),
             IconButton(
-              icon: Icon(Icons.center_focus_strong_outlined),
+              icon: Icon(
+                Icons.center_focus_strong_outlined,
+                color: chazkyWhite,
+              ),
               tooltip: 'Centrar Mapa',
               onPressed:
                   _isLoading || (_routeBounds == null && _markers.isEmpty)

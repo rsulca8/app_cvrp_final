@@ -388,25 +388,32 @@ class _TodasRutasMapaScreenState extends State<TodasRutasMapaScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text('Mapa General de Rutas'),
+          title: Text(
+            'Mapa General de Rutas',
+            style: TextStyle(color: chazkyWhite),
+          ),
           backgroundColor: Colors.transparent,
           elevation: 0,
+          foregroundColor: chazkyWhite,
           actions: [
             if (_rutas.isNotEmpty)
               IconButton(
-                icon: Icon(Icons.list),
+                icon: Icon(Icons.list, color: chazkyWhite),
                 tooltip: 'Ver Leyenda',
                 onPressed: _showLegend,
               ),
             IconButton(
-              icon: Icon(Icons.center_focus_strong_outlined),
+              icon: Icon(
+                Icons.center_focus_strong_outlined,
+                color: chazkyWhite,
+              ),
               tooltip: 'Centrar Mapa',
               onPressed: _isLoading || _mapBounds == null
                   ? null
                   : _fitMapToBounds,
             ),
             IconButton(
-              icon: Icon(Icons.refresh),
+              icon: Icon(Icons.refresh, color: chazkyWhite),
               tooltip: 'Recargar Rutas',
               onPressed: _isLoading ? null : _loadAllRoutes,
             ),
