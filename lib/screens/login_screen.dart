@@ -58,7 +58,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ); // <-- Pasar el rol
           break;
         case 'credenciales incorrectas':
-          _showErrorDialog('Credenciales incorrectas.');
+          _showErrorDialog('Usuario o contraseña incorrectos.');
           break;
         default:
           _showErrorDialog('Error desconocido en el login.');
