@@ -51,7 +51,12 @@ class _HojaRutaDiariaScreenState extends State<HojaRutaDiariaScreen> {
       }
 
       // 2. Llamar a la nueva función API
-      final response = await API.getRutasPorRepartidor(authService.userId!);
+      final response = await API.getRutasPorRepartidor(authService.userId!, [
+        'Asignada',
+        'En Curso',
+        'Completada',
+        'Cancelada',
+      ]);
 
       if (mounted) {
         // 3. Procesar la respuesta (que ahora es una lista)

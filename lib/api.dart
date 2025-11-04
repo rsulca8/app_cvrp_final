@@ -467,13 +467,20 @@ class API {
 
   static Future<List<dynamic>> getRutasPorRepartidor(
     String repartidorId,
+    List<String> estados,
   ) async {
     if (repartidorId.isEmpty) {
       throw ArgumentError('ID de repartidor inválido.');
     }
+
+    // Si no se especifican estados, no devuelve nada
+    if (estados.isEmpty) {
+      return [];
+    }
+    final estadosParam = estados.join(',');
     // Llama a un nuevo script PHP
     final url = Uri.parse(
-      '${API._endPoint}get_rutas_repartidor.php?id_repartidor=$repartidorId&estados=Asignada,En Curso',
+      '${API._endPoint}get_rutas_repartidor.php?id_repartidor=$repartidorId&estados=$estadosParam',
     );
     try {
       final response = await http.get(url);
@@ -497,6 +504,89 @@ class API {
       print('Error en getRutasPorRepartidor: $e');
       throw Exception(
         'No se pudieron cargar las rutas: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> actualizarEstadoParada(
+    String idRutaDetalle,
+    String nuevoEstado, {
+    String? motivo,
+  }) async {
+    final url = Uri.parse('${API._endPoint}actualizar_estado_parada.php');
+    try {
+      final response = await http.put(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: json.encode({
+          'id_ruta_detalle': idRutaDetalle,
+          'nuevo_estado': nuevoEstado,
+          'motivo_fallo': motivo, // Será null si no se provee
+        }),
+      );
+
+      final decodedResponse = json.decode(response.body);
+      if (response.statusCode == 200) {
+        if (decodedResponse is Map<String, dynamic>) {
+          return decodedResponse; // Devuelve la respuesta del PHP (ej: {'status':'success', 'message': '...'})
+        } else {
+          throw Exception('Respuesta inesperada del servidor.');
+        }
+      } else {
+        // Error HTTP (400, 500, etc.)
+        throw Exception(
+          decodedResponse['message'] ??
+              'Error ${response.statusCode} del servidor.',
+        );
+      }
+    } catch (e) {
+      print('Error en actualizarEstadoParada: $e');
+      throw Exception(
+        'Error de conexión o formato: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+    }
+  }
+
+  static Future<Map<String, dynamic>> getPedidoDetalles(String idPedido) async {
+    // Valida el ID localmente antes de hacer la llamada
+    if (idPedido.isEmpty ||
+        int.tryParse(idPedido) == null ||
+        int.parse(idPedido) <= 0) {
+      throw ArgumentError('ID de pedido inválido proporcionado.');
+    }
+
+    // Construye la URL
+    final url = Uri.parse(
+      '${API._endPoint}get_pedido_detalles.php?id_pedido=$idPedido',
+    );
+
+    try {
+      // Llama al script PHP
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        // Si el servidor responde OK
+        final data = json.decode(response.body);
+
+        // Comprueba el 'status' dentro del JSON devuelto por PHP
+        if (data is Map<String, dynamic> && data['status'] == 'success') {
+          // Devuelve el mapa completo, que incluye {'status': 'success', 'detalles': [...]}
+          return data;
+        } else {
+          // Si el PHP devolvió {'status': 'error', 'message': '...'}
+          throw Exception(
+            data['message'] ?? 'Respuesta inválida del servidor.',
+          );
+        }
+      } else {
+        // Error de HTTP (ej: 404, 500)
+        throw Exception('Error del servidor (${response.statusCode})');
+      }
+    } catch (e) {
+      // Error de red, decodificación JSON, o excepciones de arriba
+      print('Error en getPedidoDetalles: $e');
+      throw Exception(
+        'No se pudieron cargar los detalles del pedido: ${e.toString().replaceFirst("Exception: ", "")}',
       );
     }
   }

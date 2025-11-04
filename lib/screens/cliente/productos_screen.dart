@@ -21,44 +21,61 @@ class _ProductosScreenState extends State<ProductosScreen> {
   static const Color chazkyGold = Color(0xFFD4AF37);
   static const Color chazkyWhite = Colors.white;
 
-  // Estados
-  List<Product> _products = [];
+  // Estados de Datos
+  List<Product> _products = []; // Lista completa de productos
+  List<Product> _filteredProducts = []; // Lista filtrada para mostrar
   Map<String, CartItem> _cart = {};
-  bool _isLoading = true; // Loader principal para productos y unidades
   double _total = 0.0;
   String? _errorLoading;
 
-  // --- ¡NUEVO! Estados para las Unidades ---
+  // Estados de Unidades
   List<Map<String, dynamic>> _weightUnits = [];
   List<Map<String, dynamic>> _dimensionUnits = [];
-  // --- Fin Nuevo ---
+
+  // --- Estados de Filtro y Búsqueda ---
+  List<Map<String, dynamic>> _categories = [];
+  String? _selectedCategoryId; // null = "Todas"
+  bool _isLoadingCategories = true;
+
+  bool _isSearchVisible = false; // Controla visibilidad del searchbar
+  final TextEditingController _searchController = TextEditingController();
+  // --- Fin Estados ---
+
+  bool _isLoadingProducts = true; // Loader principal
 
   @override
   void initState() {
     super.initState();
-    // Ahora _loadInitialData carga todo
     _loadInitialData();
+    // Listener para actualizar la lista al escribir
+    _searchController.addListener(_onFilterChanged);
   }
 
-  // --- ¡ACTUALIZADO! Carga productos Y unidades ---
+  @override
+  void dispose() {
+    _searchController.removeListener(_onFilterChanged);
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadInitialData() async {
-    if (!_isLoading) setState(() => _isLoading = true);
+    // ... (sin cambios) ...
+    if (!_isLoadingProducts) setState(() => _isLoadingProducts = true);
     _errorLoading = null;
 
     try {
-      // Carga productos, unidades de peso y dimensión en paralelo
       final results = await Future.wait([
         API.getProductos(),
         API.getUnidadesPeso(),
         API.getUnidadesDimension(),
-        _loadCartFromPrefs(), // Carga el carrito también en paralelo
+        _loadCartFromPrefs(), // Carga el carrito
+        API.getCategorias(), // Carga categorías
       ]);
 
-      // Procesa resultados
       final productData = results[0] as List<dynamic>;
       final weightUnitData = results[1] as List<dynamic>;
       final dimensionUnitData = results[2] as List<dynamic>;
-      // El carrito ya se cargó en _loadCartFromPrefs y actualizó _cart y _total
+      final categoriesData = results[4] as List<dynamic>;
 
       final loadedProducts = productData
           .where((item) => item is Map<String, dynamic>)
@@ -68,26 +85,60 @@ class _ProductosScreenState extends State<ProductosScreen> {
       if (mounted) {
         setState(() {
           _products = loadedProducts;
-          // Guarda las listas de unidades (asegura el tipo)
           _weightUnits = List<Map<String, dynamic>>.from(weightUnitData);
           _dimensionUnits = List<Map<String, dynamic>>.from(dimensionUnitData);
-          _isLoading = false;
+          _categories = List<Map<String, dynamic>>.from(categoriesData);
+
+          _isLoadingProducts = false;
+          _isLoadingCategories = false;
+
+          _onFilterChanged(); // Aplica el filtro inicial (mostrar todos)
         });
       }
     } catch (e) {
       print("Error detallado al cargar datos iniciales: $e");
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _isLoadingProducts = false;
+          _isLoadingCategories = false;
           _errorLoading = "Error al cargar datos. Intenta de nuevo.";
         });
       }
     }
   }
 
-  // Separado para poder llamarlo con await en Future.wait
+  // --- ¡ACTUALIZADO! Lógica unificada para filtrar y buscar ---
+  void _onFilterChanged() {
+    final String searchTerm = _searchController.text.toLowerCase();
+
+    setState(() {
+      List<Product> tempProducts = List.from(_products);
+
+      // 1. Filtrar por Categoría
+      if (_selectedCategoryId != null) {
+        tempProducts = tempProducts
+            .where((p) => p.id_categoria == _selectedCategoryId)
+            .toList();
+      }
+
+      // 2. Filtrar por Término de Búsqueda (sobre la lista ya filtrada por categoría)
+      if (searchTerm.isNotEmpty) {
+        tempProducts = tempProducts
+            .where(
+              (p) =>
+                  p.nombre.toLowerCase().contains(searchTerm) ||
+                  p.marca.toLowerCase().contains(searchTerm),
+            )
+            .toList();
+      }
+
+      _filteredProducts = tempProducts;
+    });
+  }
+  // --- Fin Actualización ---
+
+  // --- Funciones del Carrito (sin cambios) ---
   Future<void> _loadCartFromPrefs() async {
-    // La lógica interna de _loadCart sigue igual
     try {
       final prefs = await SharedPreferences.getInstance();
       if (prefs.containsKey('pedido')) {
@@ -111,27 +162,24 @@ class _ProductosScreenState extends State<ProductosScreen> {
             print("Item de carrito inválido encontrado (ID: $key)");
           }
         });
-        _cart = loadedCart; // Actualiza directamente
+        _cart = loadedCart;
       } else {
-        _cart = {}; // Asegura que esté vacío
+        _cart = {};
       }
-      _calculateTotal(); // Calcula total después de cargar
+      _calculateTotal(); // Llama a setState internamente
     } catch (e) {
       print("Error al cargar carrito: $e");
       _cart = {};
       _calculateTotal();
     }
   }
-  // --- Fin Carga ---
 
-  // --- Funciones del Carrito (sin cambios funcionales) ---
   Future<void> _saveCart() async {
-    /* ... sin cambios ... */
     try {
       final prefs = await SharedPreferences.getInstance();
       final cartDataToSave = _cart.map(
         (key, value) => MapEntry(key, {
-          'producto': value.product.toJson(), // Usa el modelo actualizado
+          'producto': value.product.toJson(),
           'cantidad': value.quantity,
         }),
       );
@@ -154,7 +202,6 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }
 
   void _addToCart(Product product, [int quantity = 1]) {
-    /* ... sin cambios ... */
     setState(() {
       if (_cart.containsKey(product.id)) {
         _cart[product.id]!.quantity += quantity;
@@ -162,12 +209,11 @@ class _ProductosScreenState extends State<ProductosScreen> {
         _cart[product.id] = CartItem(product: product, quantity: quantity);
       }
       _calculateTotal();
-      _saveCart(); // Guarda después de modificar
     });
+    _saveCart();
   }
 
   void _removeFromCart(Product product) {
-    /* ... sin cambios ... */
     setState(() {
       bool removed = false;
       if (_cart.containsKey(product.id)) {
@@ -178,21 +224,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
           removed = true;
         }
         _calculateTotal();
-        _saveCart(); // Guarda después de modificar
         if (removed && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${product.nombre} eliminado del carrito.'),
+              content: Text('${product.nombre} eliminado.'),
               duration: Duration(seconds: 1),
             ),
           );
         }
       }
     });
+    _saveCart();
   }
 
   void _calculateTotal() {
-    /* ... sin cambios ... */
     double total = 0.0;
     _cart.forEach((key, cartItem) {
       total += cartItem.product.precio * cartItem.quantity;
@@ -205,14 +250,14 @@ class _ProductosScreenState extends State<ProductosScreen> {
   }
   // --- Fin Funciones Carrito ---
 
-  // --- ¡NUEVO! Helpers para obtener símbolos de unidades ---
+  // --- Helpers de Unidades (sin cambios) ---
   String _getPesoUnitSymbol(String? unitId) {
     if (unitId == null || unitId.isEmpty) return '';
     final unit = _weightUnits.firstWhere(
       (u) => u['id_unidad_peso']?.toString() == unitId,
-      orElse: () => {}, // Devuelve mapa vacío si no encuentra
+      orElse: () => {},
     );
-    return unit['simbolo'] ?? unitId; // Devuelve símbolo o el ID como fallback
+    return unit['simbolo'] ?? unitId;
   }
 
   String _getDimensionUnitSymbol(String? unitId) {
@@ -221,19 +266,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
       (u) => u['id_unidad_dimension']?.toString() == unitId,
       orElse: () => {},
     );
-    return unit['simbolo'] ?? unitId; // Devuelve símbolo o el ID como fallback
+    return unit['simbolo'] ?? unitId;
   }
   // --- Fin Helpers ---
 
+  // --- Popup de Detalle (sin cambios) ---
   void _showProductDetail(BuildContext context, Product product) {
+    // ... (código del popup sin cambios) ...
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        // --- Contenido del Popup (¡AHORA USA LOS HELPERS!) ---
         return Container(
-          // ... (decoración y estructura sin cambios) ...
           height: MediaQuery.of(context).size.height * 0.85,
           decoration: BoxDecoration(
             color: primaryDarkBlue,
@@ -259,11 +304,10 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Imagen, Marca, Nombre, Precio, Descripción (sin cambios)
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
-                          /* ... */ product.imagenUrl,
+                          product.imagenUrl,
                           height: 250,
                           width: double.infinity,
                           fit: BoxFit.cover,
@@ -339,23 +383,19 @@ class _ProductosScreenState extends State<ProductosScreen> {
                         ),
                       ),
                       SizedBox(height: 20),
-
-                      // --- Detalles Adicionales (¡ACTUALIZADO!) ---
                       _buildDetailRow('Categoría:', product.categorias),
                       _buildDetailRow('Stock:', product.stock ?? 'N/A'),
                       _buildDetailRow(
                         'Peso:',
                         (product.peso != null && product.peso!.isNotEmpty)
-                            // Usa el helper para obtener el símbolo
                             ? '${product.peso} ${_getPesoUnitSymbol(product.id_unidad_peso)}'
-                            : 'No especificado',
+                            : 'N/A',
                       ),
                       _buildDetailRow(
                         'Dimensiones:',
                         (product.alto != null && product.alto!.isNotEmpty)
-                            // Usa el helper para obtener el símbolo
-                            ? '${product.alto} x ${product.ancho} x ${product.profundidad} ${_getDimensionUnitSymbol(product.id_unidad_dimension)}'
-                            : 'No especificadas',
+                            ? '${product.alto}x${product.ancho}x${product.profundidad} ${_getDimensionUnitSymbol(product.id_unidad_dimension)}'
+                            : 'N/A',
                       ),
                       _buildDetailRow(
                         'Código Barras:',
@@ -365,9 +405,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
                   ),
                 ),
               ),
-              // Botón Añadir (sin cambios)
               Container(
-                /* ... Botón ... */
                 padding: EdgeInsets.fromLTRB(
                   20,
                   15,
@@ -415,10 +453,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  // Helper sin cambios
   Widget _buildDetailRow(String title, String value) {
     return Padding(
-      /* ... */
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -449,13 +485,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
       ),
     );
   }
+  // --- Fin Popup ---
 
   @override
   Widget build(BuildContext context) {
-    // ... (Scaffold, FAB sin cambios) ...
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: _isLoading
+      body: _isLoadingProducts
           ? Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(chazkyGold),
@@ -465,12 +501,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
           ? _buildErrorWidget(_errorLoading!)
           : Column(
               children: [
-                _buildHeader(),
-                Expanded(
-                  child: _products.isEmpty
-                      ? _buildEmptyListWidget()
-                      : _buildProductList(),
-                ),
+                _buildHeader(), // Contiene el botón de búsqueda
+                // --- ¡NUEVO! Muestra la barra de búsqueda si está visible ---
+                if (_isSearchVisible) _buildSearchBar(),
+
+                _buildFilterControls(), // Barra de Filtros de Categoría
+
+                Expanded(child: _buildProductList()),
               ],
             ),
       floatingActionButton: FloatingActionButton(
@@ -483,20 +520,16 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  // --- Widgets Helpers (Error, Empty, Header, List sin cambios funcionales) ---
+  // --- Widgets de UI ---
+
   Widget _buildErrorWidget(String errorMsg) {
-    // ... (sin cambios) ...
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              color: Colors.redAccent,
-              size: 50,
-            ), // Icono más genérico
+            Icon(Icons.error_outline, color: Colors.redAccent, size: 50),
             SizedBox(height: 10),
             Text(
               errorMsg,
@@ -507,7 +540,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
             ElevatedButton.icon(
               icon: Icon(Icons.refresh),
               label: Text('Reintentar'),
-              onPressed: _loadInitialData, // Llama a la función que carga todo
+              onPressed: _loadInitialData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: mediumDarkBlue,
                 foregroundColor: chazkyWhite,
@@ -519,33 +552,9 @@ class _ProductosScreenState extends State<ProductosScreen> {
     );
   }
 
-  Widget _buildEmptyListWidget() {
-    // ... (sin cambios) ...
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.inventory_2_outlined,
-            color: chazkyWhite.withOpacity(0.5),
-            size: 80,
-          ),
-          SizedBox(height: 20),
-          Text(
-            'No hay productos disponibles',
-            style: TextStyle(
-              color: chazkyWhite.withOpacity(0.7),
-              fontSize: 20,
-              fontFamily: 'Montserrat',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // --- ¡ACTUALIZADO! ---
+  // Se movió el total a la izquierda y se añadió el botón de búsqueda
   Widget _buildHeader() {
-    // ... (sin cambios) ...
     int totalItems = _cart.values.fold(0, (sum, item) => sum + item.quantity);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -556,35 +565,204 @@ class _ProductosScreenState extends State<ProductosScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            'Total: \$${_total.toStringAsFixed(2)}',
-            style: TextStyle(
-              color: chazkyWhite,
-              fontFamily: 'Montserrat',
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+          // Total y Items a la izquierda
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Total: \$${_total.toStringAsFixed(2)}',
+                style: TextStyle(
+                  color: chazkyWhite,
+                  fontFamily: 'Montserrat',
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Items: $totalItems',
+                style: TextStyle(
+                  color: chazkyWhite.withOpacity(0.8),
+                  fontFamily: 'Montserrat',
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
-          Text(
-            'Items: $totalItems',
-            style: TextStyle(
+          // Botón de Búsqueda a la derecha
+          IconButton(
+            icon: Icon(
+              _isSearchVisible ? Icons.close : Icons.search,
               color: chazkyWhite,
-              fontFamily: 'Montserrat',
-              fontSize: 16,
             ),
+            onPressed: () {
+              setState(() {
+                _isSearchVisible = !_isSearchVisible;
+                // Si se está ocultando la barra, limpia el texto y filtra de nuevo
+                if (!_isSearchVisible && _searchController.text.isNotEmpty) {
+                  _searchController
+                      .clear(); // Esto dispara el listener y llama a _onFilterChanged
+                }
+              });
+            },
+            tooltip: 'Buscar por nombre o marca',
           ),
         ],
       ),
     );
   }
 
+  // --- ¡NUEVO! Widget de Barra de Búsqueda ---
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12.0, 8.0, 12.0, 4.0),
+      child: TextField(
+        controller: _searchController,
+        style: TextStyle(color: chazkyWhite, fontFamily: 'Montserrat'),
+        decoration: InputDecoration(
+          hintText: 'Buscar por nombre o marca...',
+          hintStyle: TextStyle(
+            color: chazkyWhite.withOpacity(0.5),
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(
+            Icons.search,
+            color: chazkyWhite.withOpacity(0.7),
+            size: 20,
+          ),
+          filled: true,
+          fillColor: mediumDarkBlue.withOpacity(0.5),
+          isDense: true,
+          contentPadding: EdgeInsets.symmetric(
+            vertical: 12.0,
+            horizontal: 12.0,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(color: Colors.white24, width: 0.5),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(color: Colors.white24, width: 0.5),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8.0),
+            borderSide: BorderSide(color: chazkyGold, width: 1.5),
+          ),
+          // Botón para limpiar el texto
+          suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.clear, color: Colors.white54, size: 20),
+                  onPressed: () {
+                    _searchController.clear(); // Dispara el listener y filtra
+                  },
+                )
+              : null,
+        ),
+      ),
+    );
+  }
+  // --- Fin Nuevo ---
+
+  Widget _buildFilterControls() {
+    // ... (sin cambios) ...
+    if (_isLoadingCategories) {
+      return Container(
+        height: 50,
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2, color: chazkyGold),
+          ),
+        ),
+      );
+    }
+    if (_categories.isEmpty) return SizedBox.shrink();
+
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      color: primaryDarkBlue.withAlpha(200),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        itemCount: _categories.length + 1, // +1 "Todas"
+        itemBuilder: (context, index) {
+          final bool isAllChip = index == 0;
+          final String categoryName = isAllChip
+              ? 'Todas'
+              : _categories[index - 1]['nombre_categoria'] ?? 'N/A';
+          final String? categoryId = isAllChip
+              ? null
+              : _categories[index - 1]['id_categoria']?.toString();
+          final bool isSelected = _selectedCategoryId == categoryId;
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: ChoiceChip(
+              label: Text(categoryName),
+              selected: isSelected,
+              onSelected: (selected) {
+                // Actualiza el estado Y llama al filtro
+                setState(() {
+                  _selectedCategoryId = categoryId;
+                });
+                _onFilterChanged();
+              },
+              backgroundColor: mediumDarkBlue.withOpacity(0.5),
+              selectedColor: chazkyGold,
+              labelStyle: TextStyle(
+                color: isSelected ? primaryDarkBlue : chazkyWhite,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontFamily: 'Montserrat',
+              ),
+              side: BorderSide(color: isSelected ? chazkyGold : Colors.white30),
+              showCheckmark: false,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildProductList() {
-    // ... (sin cambios funcionales, la UI ya estaba bien) ...
+    // ... (sin cambios) ...
+    if (_filteredProducts.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_off_rounded,
+                color: chazkyWhite.withOpacity(0.5),
+                size: 60,
+              ),
+              SizedBox(height: 16),
+              Text(
+                _selectedCategoryId == null && _searchController.text.isEmpty
+                    ? 'No hay productos disponibles.'
+                    : 'No se encontraron productos\ncon esos filtros.', // Mensaje más específico
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: chazkyWhite.withOpacity(0.7),
+                  fontSize: 18,
+                  fontFamily: 'Montserrat',
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView.builder(
       padding: const EdgeInsets.all(8.0),
-      itemCount: _products.length,
+      itemCount: _filteredProducts.length,
       itemBuilder: (ctx, index) {
-        final product = _products[index];
+        final product = _filteredProducts[index];
         final imageUrl = product.imagenUrl;
 
         return Card(

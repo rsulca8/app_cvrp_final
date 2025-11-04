@@ -95,24 +95,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Repartidor
   static final List<Widget> _repartidorWidgetOptions = <Widget>[
-    RutaPedidoScreen(),
     HojaRutaDiariaScreen(),
+    RutaPedidoScreen(),
   ];
   static const List<String> _repartidorAppBarTitles = <String>[
-    'Ruta del Pedido',
     'Hoja de Ruta Diaria',
+    'Ruta del Pedido',
   ];
   static const List<BottomNavigationBarItem> _repartidorNavItems =
       <BottomNavigationBarItem>[
         BottomNavigationBarItem(
-          icon: Icon(Icons.route_outlined),
-          activeIcon: Icon(Icons.route),
-          label: 'Ruta',
-        ),
-        BottomNavigationBarItem(
           icon: Icon(Icons.list_outlined),
           activeIcon: Icon(Icons.list),
           label: 'Hoja de Ruta Diaria',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.route_outlined),
+          activeIcon: Icon(Icons.route),
+          label: 'Ruta',
         ),
       ];
   // --- Fin Definiciones ---
