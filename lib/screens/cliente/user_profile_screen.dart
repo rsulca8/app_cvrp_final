@@ -70,7 +70,7 @@ class UserProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(height: 20),
-                _buildProfileAvatar(),
+                _buildProfileAvatar(userData['foto_perfil'] ?? ''),
                 SizedBox(height: 15),
                 Text(
                   // Usamos los datos de la API que son más completos
@@ -113,15 +113,13 @@ class UserProfileScreen extends StatelessWidget {
   }
 
   /// Widget para construir el avatar del perfil con un borde dorado.
-  Widget _buildProfileAvatar() {
+  Widget _buildProfileAvatar(String fotoPerfil) {
     return CircleAvatar(
       radius: 65,
       backgroundColor: chazkyGold, // Color del borde
       child: CircleAvatar(
         radius: 60,
-        backgroundImage: AssetImage(
-          'assets/images/profile.png',
-        ), // Tu imagen de perfil
+        backgroundImage: NetworkImage(fotoPerfil), // Tu imagen de perfil
         backgroundColor: mediumDarkBlue,
       ),
     );

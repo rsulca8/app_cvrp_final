@@ -590,4 +590,28 @@ class API {
       );
     }
   }
+
+  static Future<Map<String, dynamic>> getAllUsuarios() async {
+    final url = Uri.parse('${API._endPoint}get_usuarios.php');
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data is Map<String, dynamic> && data['status'] == 'success') {
+          return data; // Devuelve {'status': 'success', 'usuarios': [...]}
+        } else {
+          throw Exception(
+            data['message'] ?? 'Respuesta inválida del servidor.',
+          );
+        }
+      } else {
+        throw Exception('Error del servidor (${response.statusCode})');
+      }
+    } catch (e) {
+      print('Error en getAllUsuarios: $e');
+      throw Exception(
+        'No se pudieron cargar los usuarios: ${e.toString().replaceFirst("Exception: ", "")}',
+      );
+    }
+  }
 }

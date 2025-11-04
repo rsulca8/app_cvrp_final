@@ -11,7 +11,8 @@ import 'admin/ajustes_admin_screen.dart';
 import 'admin/logistica_screen.dart';
 import 'repartidor/ruta_pedido_screen.dart';
 import 'repartidor/hoja_ruta_diaria_screen.dart';
-import 'admin/ajustes_repartidor_screen.dart';
+import 'admin/usuario_admin_screen.dart';
+import 'admin/usuario_edit_screen.dart';
 import 'admin/productos_config_screen.dart';
 
 import '../auth_service.dart';
@@ -58,12 +59,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Admin
   static final List<Widget> _adminWidgetOptions = <Widget>[
+    UsuariosAdminScreen(),
     VentasScreen(),
     ProductosConfigScreen(),
     AjustesAdminScreen(),
     LogisticaScreen(),
   ];
   static const List<String> _adminAppBarTitles = <String>[
+    'Usuarios',
     'Ventas',
     'Productos',
     'Ajustes',
@@ -71,6 +74,11 @@ class _HomeScreenState extends State<HomeScreen> {
   ];
   static const List<BottomNavigationBarItem> _adminNavItems =
       <BottomNavigationBarItem>[
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          activeIcon: Icon(Icons.person),
+          label: 'Usuarios',
+        ),
         BottomNavigationBarItem(
           icon: Icon(Icons.point_of_sale_outlined),
           activeIcon: Icon(Icons.point_of_sale),
