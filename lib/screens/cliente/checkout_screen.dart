@@ -243,7 +243,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         appBar: AppBar(
           title: Text(
             'Finalizar Pedido',
-            style: TextStyle(fontFamily: 'Montserrat'),
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              color: chazkyWhite,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           backgroundColor: Colors.transparent,
           elevation: 0,

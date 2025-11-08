@@ -59,15 +59,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Admin
   static final List<Widget> _adminWidgetOptions = <Widget>[
-    UsuariosAdminScreen(),
     VentasScreen(),
+    UsuariosAdminScreen(),
     ProductosConfigScreen(),
     AjustesAdminScreen(),
     LogisticaScreen(),
   ];
   static const List<String> _adminAppBarTitles = <String>[
+    'Inicio',
     'Usuarios',
-    'Ventas',
     'Productos',
     'Ajustes',
     'Logística',
@@ -75,14 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
   static const List<BottomNavigationBarItem> _adminNavItems =
       <BottomNavigationBarItem>[
         BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          activeIcon: Icon(Icons.home),
+          label: 'Inicio',
+        ),
+        BottomNavigationBarItem(
           icon: Icon(Icons.person_outline),
           activeIcon: Icon(Icons.person),
           label: 'Usuarios',
-        ),
-        BottomNavigationBarItem(
-          icon: Icon(Icons.point_of_sale_outlined),
-          activeIcon: Icon(Icons.point_of_sale),
-          label: 'Ventas',
         ),
         BottomNavigationBarItem(
           icon: Icon(Icons.inventory_2_outlined),

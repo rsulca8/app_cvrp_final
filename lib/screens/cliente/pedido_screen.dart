@@ -159,7 +159,14 @@ class _PedidoScreenState extends State<PedidoScreen> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
-          title: Text('Mi Pedido', style: TextStyle(fontFamily: 'Montserrat')),
+          title: Text(
+            'Mi Pedido',
+            style: TextStyle(
+              fontFamily: 'Montserrat',
+              color: chazkyWhite,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
