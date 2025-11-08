@@ -24,13 +24,11 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
   bool _isLoading = true;
   String? _error;
 
-  // --- Estados de Filtro y Búsqueda ---
   List<Map<String, dynamic>> _categories = [];
   String? _selectedCategoryId; // null = "Todas"
   bool _isLoadingCategories = true;
   bool _isSearchVisible = false;
   final TextEditingController _searchController = TextEditingController();
-  // --- Fin Estados ---
 
   @override
   void initState() {
@@ -53,7 +51,7 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
     setState(() {
       _isLoading = true;
       _error = null;
-      _isLoadingCategories = true; // Inicia carga de categorías
+      _isLoadingCategories = true;
     });
 
     try {
@@ -126,7 +124,7 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
     final result = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (ctx) => ProductEditScreen(product: product)),
     );
-    if (result == true && mounted) {
+    if (result == true) {
       _loadInitialData(forceRefresh: true); // Recarga todo al volver
     }
   }
@@ -160,15 +158,9 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
 
     if (confirm != true) return;
 
-    // Muestra un loader de "eliminando"
     final snack = ScaffoldMessenger.of(context);
     snack.showSnackBar(
-      SnackBar(
-        content: Text('Eliminando "$productName"...'),
-        duration: Duration(
-          seconds: 10,
-        ), // Duración larga, se ocultará manualmente
-      ),
+      SnackBar(content: Text('Eliminando "$productName"...'), duration: Duration(seconds: 10)),
     );
 
     try {
@@ -183,7 +175,6 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
               backgroundColor: Colors.orange,
             ),
           );
-          // Actualiza la UI localmente
           setState(() {
             _products.removeWhere((p) => p.id == productId);
             _onFilterChanged(); // Re-aplica filtros
@@ -212,8 +203,7 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      // --- NUEVA AppBar ---
+      backgroundColor: Colors.transparent, 
       appBar: AppBar(
         title: Text(
           'Configurar Productos',
@@ -222,10 +212,8 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
             fontWeight: FontWeight.bold,
             color: chazkyWhite,
           ),
-        ),
-        backgroundColor: primaryDarkBlue.withOpacity(
-          0.8,
-        ), // Coincide con _buildHeader
+        ), 
+        backgroundColor: primaryDarkBlue.withOpacity(0.8),
         elevation: 0,
         actions: [
           IconButton(
@@ -245,16 +233,10 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
           ),
         ],
       ),
-      // --- Fin AppBar ---
       body: Column(
         children: [
-          // Muestra la barra de búsqueda si está visible
           if (_isSearchVisible) _buildSearchBar(),
-
-          // Muestra la barra de filtros de categoría
           _buildFilterControls(),
-
-          // Lista de productos (con su propio loader/error/empty)
           Expanded(
             child: RefreshIndicator(
               onRefresh: () => _loadInitialData(forceRefresh: true),
@@ -269,7 +251,7 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
                     )
                   : _error != null
                   ? _buildErrorWidget(_error!)
-                  : _buildProductListView(), // Este widget maneja la lista vacía
+                  : _buildProductListView(),
             ),
           ),
         ],
@@ -283,8 +265,6 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
       ),
     );
   }
-
-  // --- Widgets de UI ---
 
   Widget _buildErrorWidget(String errorMsg) {
     return Center(
@@ -376,8 +356,7 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
         ),
       );
     }
-    if (_categories.isEmpty)
-      return SizedBox.shrink(); // No muestra nada si no hay categorías
+    if (_categories.isEmpty) return SizedBox.shrink();
 
     return Container(
       height: 50,
@@ -424,7 +403,6 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
     );
   }
 
-  // Widget para la lista vacía (ahora usa _filteredProducts)
   Widget _buildEmptyListWidget() {
     return Center(
       child: Column(
@@ -437,7 +415,6 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
           ),
           SizedBox(height: 20),
           Text(
-            // Mensaje dinámico
             _selectedCategoryId == null && _searchController.text.isEmpty
                 ? 'No hay productos cargados'
                 : 'No se encontraron productos\ncon esos filtros.',
@@ -465,16 +442,14 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
     );
   }
 
-  // Widget para la lista (ahora usa _filteredProducts)
   Widget _buildProductListView() {
-    // Maneja el estado de "lista vacía" aquí
     if (_filteredProducts.isEmpty) {
       return _buildEmptyListWidget();
     }
 
     return ListView.builder(
       padding: const EdgeInsets.all(8.0),
-      itemCount: _filteredProducts.length, // Usa la lista filtrada
+      itemCount: _filteredProducts.length,
       itemBuilder: (ctx, index) {
         final product = _filteredProducts[index]; // Usa la lista filtrada
         final imageUrl = product.imagenUrl;
@@ -535,8 +510,7 @@ class _ProductosConfigScreenState extends State<ProductosConfigScreen> {
                   icon: Icon(Icons.delete_outline, color: Colors.redAccent),
                   onPressed: () => _deleteProduct(
                     product.id,
-                    product.nombre,
-                  ), // Pasa el nombre para el diálogo
+                    product.nombre,                  ),
                   tooltip: 'Eliminar',
                 ),
               ],
