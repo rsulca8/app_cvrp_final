@@ -1,0 +1,8 @@
+Para el funcionamiento se deben configurar las siguientes variables de entorno en el servidor
+
+env[GOOGLE_API_KEY] = "API_KEY"
+env[GOOGLE_SEARCH_CX] = "ID DEL BUSCADOR"
+env[CVRP_APP_HOST] = "HOST DEL SERVIDOR DE BASE DE DATOS"
+env[CVRP_APP_DATABASE] = "NOMBRE DE LA BASE DE DATOS"
+env[CVRP_APP_DB_USER] = "NOMBRE DE USUARIO DE BASE DE DATOS"
+env[CVRP_APP_DB_PASSWORD] = "CONTRASEÑA DEL USUARIO DE BASE DE DATOS"
